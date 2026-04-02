@@ -125,6 +125,13 @@ void SearchAlgorithm::search() {
 }
 
 bool SearchAlgorithm::check_goal_and_set_plan(const State &state) {
+    log << "Checking state: ";
+    state.unpack();
+    const std::vector<int> &values = state.get_unpacked_values();
+    for (size_t i = 0; i < values.size(); ++i) {
+        log << values[i] << " ";
+    }
+    log << endl;
     if (task_properties::is_goal_state(task_proxy, state)) {
         log << "Solution found!" << endl;
         Plan plan;
