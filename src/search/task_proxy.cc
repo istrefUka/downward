@@ -44,6 +44,19 @@ State::State(const AbstractTask &task, vector<int> &&values)
     assert(num_variables == task.get_num_variables());
 }
 
+//TODO: How to initialize num_variables?
+State::State(
+    const AbstractTask &task, const StateRegistry &registry, StateID id, shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int>>> &effs)
+    : task(&task),
+      registry(&registry),
+      id(id),
+      buffer(nullptr),
+      values(nullptr),
+      state_packer(nullptr),
+      num_variables(nullptr) {
+    assert(id != StateID::no_state);
+}
+
 State State::get_unregistered_successor(const OperatorProxy &op) const {
     assert(!op.is_axiom());
     assert(task_properties::is_applicable(op, *this));

@@ -566,6 +566,9 @@ class State {
       a 4-byte gap at the end of the object. But it would probably be nice to
       have fewer attributes regardless.
     */
+    bool is_delta;
+    std::shared_ptr<State> parent_state;
+    const std::shared_ptr<std::vector<std::tuple<int>>> effs;
     const AbstractTask *task;
     const StateRegistry *registry;
     StateID id;
@@ -596,6 +599,9 @@ public:
         const PackedStateBin *buffer, std::vector<int> &&values);
     // Construct a state with only unpacked data.
     State(const AbstractTask &task, std::vector<int> &&values);
+    // Construct a registered state with only deltas.
+    State(const AbstractTask &task, const StateRegistry &registry, StateID id, shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int>>> &effs
+        );
 
     bool operator==(const State &other) const;
     bool operator!=(const State &other) const;
