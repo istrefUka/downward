@@ -568,7 +568,7 @@ class State {
     */
     bool is_delta;
     std::shared_ptr<State> parent_state;
-    const std::shared_ptr<std::vector<std::tuple<int>>> effs;
+    const std::shared_ptr<std::vector<std::tuple<int, int>>> effs;
     const AbstractTask *task;
     const StateRegistry *registry;
     StateID id;
@@ -600,8 +600,8 @@ public:
     // Construct a state with only unpacked data.
     State(const AbstractTask &task, std::vector<int> &&values);
     // Construct a registered state with only deltas.
-    State(const AbstractTask &task, const StateRegistry &registry, StateID id, shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int>>> &effs
-        );
+    State(const AbstractTask &task, const StateRegistry &registry, StateID id,
+        shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int>>> &effs);
 
     bool operator==(const State &other) const;
     bool operator!=(const State &other) const;
@@ -782,8 +782,43 @@ inline bool State::operator!=(const State &other) const {
     return !(*this == other);
 }
 
+//Convention: first number of tuple in effs is position at which change occured, second number is what the change actually was.
+inline void State::create_variables_from_delta() {
+    //TODO: was wenn parent_state nicht existiert?
+    if (!parent_state) {
+        throw std::runtime_error("Already in root node because no parent_state exists!");
+        return;
+    }
+    std::stack<std::shared_ptr<std::vector<std::tuple<int>>>> effs_stack;
+    std::shared_ptr<State> current = parent_state;
+    std::shared_ptr<std::vector<int>> calculated_values;
+
+    while (current && current->is_delta) {
+        effs_stack.push(current->effs);
+        current = current->parent_state;
+    }
+    if (current && !current->is_delta) {
+        calculated_values = current->values;
+        std::shared_ptr<std::vector<std::tuple<int, int>>> current_eff;
+        while (!effs_stack.empty()) {
+            current_eff = effs_stack.pop();
+            for (const auto &[idx, value] : *current_eff) {
+                (*values)[idx] = value;
+            }
+
+        }
+        return;
+    }
+    throw std::runtime_error("No Initial state found in order to reconstruct state!");
+
+}
+
 inline void State::unpack() const {
     if (!values) {
+        if (is_delta) {
+            create_variables_from_delta();
+            return;
+        }
         int num_variables = size();
         /*
           A micro-benchmark in issue348 showed that constructing the vector
