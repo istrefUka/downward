@@ -601,7 +601,7 @@ public:
     State(const AbstractTask &task, std::vector<int> &&values);
     // Construct a registered state with only deltas.
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
-        shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int>>> &effs);
+        shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs);
 
     bool operator==(const State &other) const;
     bool operator!=(const State &other) const;
@@ -609,6 +609,8 @@ public:
     /* Generate unpacked data if it is not available yet. Calling the function
        on a state that already has unpacked data has no effect. */
     void unpack() const;
+    void fill_variables() const;
+    void create_variables_from_delta() const;
 
     std::size_t size() const;
     FactProxy operator[](std::size_t var_id) const;
@@ -783,13 +785,13 @@ inline bool State::operator!=(const State &other) const {
 }
 
 //Convention: first number of tuple in effs is position at which change occured, second number is what the change actually was.
-inline void State::create_variables_from_delta() {
+inline void State::create_variables_from_delta() const{
     //TODO: was wenn parent_state nicht existiert?
     if (!parent_state) {
         throw std::runtime_error("Already in root node because no parent_state exists!");
         return;
     }
-    std::stack<std::shared_ptr<std::vector<std::tuple<int>>>> effs_stack;
+    std::stack<std::shared_ptr<std::vector<std::tuple<int, int>>>> effs_stack;
     std::shared_ptr<State> current = parent_state;
     std::shared_ptr<std::vector<int>> calculated_values;
 
@@ -797,28 +799,28 @@ inline void State::create_variables_from_delta() {
         effs_stack.push(current->effs);
         current = current->parent_state;
     }
+    //Case for Root State
     if (current && !current->is_delta) {
-        calculated_values = current->values;
+        current -> fill_variables();
+        calculated_values = std::make_shared<std::vector<int>>(*current->values);
         std::shared_ptr<std::vector<std::tuple<int, int>>> current_eff;
         while (!effs_stack.empty()) {
-            current_eff = effs_stack.pop();
+            current_eff = effs_stack.top();
+            effs_stack.pop();
             for (const auto &[idx, value] : *current_eff) {
-                (*values)[idx] = value;
+                (*calculated_values)[idx] = value;
             }
 
         }
+        values = calculated_values;
         return;
     }
     throw std::runtime_error("No Initial state found in order to reconstruct state!");
 
 }
 
-inline void State::unpack() const {
+inline void State::fill_variables() const {
     if (!values) {
-        if (is_delta) {
-            create_variables_from_delta();
-            return;
-        }
         int num_variables = size();
         /*
           A micro-benchmark in issue348 showed that constructing the vector
@@ -835,6 +837,17 @@ inline void State::unpack() const {
         for (int var = 0; var < num_variables; ++var) {
             (*values)[var] = state_packer->get(buffer, var);
         }
+    }
+
+}
+
+inline void State::unpack() const {
+    if (!values) {
+        if (is_delta) {
+            create_variables_from_delta();
+            return;
+        }
+        fill_variables();
     }
 }
 
@@ -882,6 +895,9 @@ inline const PackedStateBin *State::get_buffer() const {
     }
     return buffer;
 }
+
+//TODO: get_unpacked_values_delta? (combine unpack and get_unpacked_values?)
+//inline const std::vector<int> &State::get_unpacked_values_delta() const
 
 inline const std::vector<int> &State::get_unpacked_values() const {
     if (!values) {

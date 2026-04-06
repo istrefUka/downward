@@ -23,6 +23,7 @@ State::State(
     assert(id != StateID::no_state);
     assert(buffer);
     assert(num_variables == task.get_num_variables());
+    is_delta = false;
 }
 
 State::State(
@@ -31,6 +32,7 @@ State::State(
     : State(task, registry, id, buffer) {
     assert(num_variables == static_cast<int>(values.size()));
     this->values = make_shared<vector<int>>(move(values));
+    is_delta = false;
 }
 
 State::State(const AbstractTask &task, vector<int> &&values)
@@ -42,6 +44,7 @@ State::State(const AbstractTask &task, vector<int> &&values)
       state_packer(nullptr),
       num_variables(this->values->size()) {
     assert(num_variables == task.get_num_variables());
+    is_delta = false;
 }
 
 //TODO: How to initialize num_variables?
@@ -52,9 +55,10 @@ State::State(
       id(id),
       buffer(nullptr),
       values(nullptr),
-      state_packer(nullptr),
-      num_variables(nullptr) {
+      state_packer(nullptr){
     assert(id != StateID::no_state);
+    num_variables = 0;
+    is_delta = true;
 }
 
 State State::get_unregistered_successor(const OperatorProxy &op) const {

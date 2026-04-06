@@ -14,6 +14,10 @@ SuccessorGenerator::SuccessorGenerator(const TaskProxy &task_proxy)
 
 SuccessorGenerator::~SuccessorGenerator() = default;
 
+
+
+//TODO: generate_applicable_ops_delta
+
 void SuccessorGenerator::generate_applicable_ops(
     const State &state, vector<OperatorID> &applicable_ops) const {
     state.unpack();
