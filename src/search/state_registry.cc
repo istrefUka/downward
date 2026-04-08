@@ -37,15 +37,15 @@ StateID StateRegistry::insert_id_or_pop_state() {
     return StateID(result.first);
 }
 
+//TODO: löschen falls nicht mehr gebraucht.
 State StateRegistry::lookup_state(StateID id) const {
     const PackedStateBin *buffer = state_data_pool[id.value];
     return task_proxy.create_state(*this, id, buffer);
 }
-
+//TODO: create here a compressed State (need to pass on parent and effs)
 State StateRegistry::lookup_state(
-    StateID id, vector<int> &&state_values) const {
-    const PackedStateBin *buffer = state_data_pool[id.value];
-    return task_proxy.create_state(*this, id, buffer, move(state_values));
+StateID id, std::shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const {
+    return task_proxy.create_state(*this, id, parent_state, effs, buffer);
 }
 
 const State &StateRegistry::get_initial_state() {
@@ -70,6 +70,8 @@ const State &StateRegistry::get_initial_state() {
 // application)
 //      out of the StateRegistry. This could for example be done by global
 //      functions operating on state buffers (PackedStateBin *).
+//TODO: lookup state anschauen und anschauen was machen wegen unpack, da Lösung wie in successor_generator nicht ganz optimal ist.
+//TODO: Nur delta state kreieren, falls sich lohnt.
 State StateRegistry::get_successor_state(
     const State &predecessor, const OperatorProxy &op) {
     assert(!op.is_axiom());
@@ -79,43 +81,34 @@ State StateRegistry::get_successor_state(
       buffer becoming a dangling pointer. This used to be a bug before being
       fixed in https://issues.fast-downward.org/issue1115.
     */
+    //TODO: diese Zeile problematisch, da buffer nicht enthalten in compressed states.
     state_data_pool.push_back(predecessor.get_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
-    /* Experiments for issue348 showed that for tasks with axioms it's faster
-       to compute successor states using unpacked data. */
-    if (task_properties::has_axioms(task_proxy)) {
-        predecessor.unpack();
-        vector<int> new_values = predecessor.get_unpacked_values();
-        for (EffectProxy effect : op.get_effects()) {
-            if (does_fire(effect, predecessor)) {
-                FactPair effect_pair = effect.get_fact().get_pair();
-                new_values[effect_pair.var] = effect_pair.value;
-            }
+
+    predecessor.unpack();
+    vector<int> new_values = predecessor.get_unpacked_values();
+    auto effs = std::make_shared<std::vector<std::tuple<int, int>>>();
+    for (EffectProxy effect : op.get_effects()) {
+        if (does_fire(effect, predecessor)) {
+            FactPair effect_pair = effect.get_fact().get_pair();
+            effs->emplace_back(effect_pair.var, effect_pair.value);
+            new_values[effect_pair.var] = effect_pair.value;
         }
-        axiom_evaluator.evaluate(new_values);
-        for (size_t i = 0; i < new_values.size(); ++i) {
-            state_packer.set(buffer, i, new_values[i]);
-        }
-        /*
-          NOTE: insert_id_or_pop_state possibly invalidates buffer, hence
-          we use lookup_state to retrieve the state using the correct buffer.
-        */
-        StateID id = insert_id_or_pop_state();
-        return lookup_state(id, move(new_values));
-    } else {
-        for (EffectProxy effect : op.get_effects()) {
-            if (does_fire(effect, predecessor)) {
-                FactPair effect_pair = effect.get_fact().get_pair();
-                state_packer.set(buffer, effect_pair.var, effect_pair.value);
-            }
-        }
-        /*
-          NOTE: insert_id_or_pop_state possibly invalidates buffer, hence
-          we use lookup_state to retrieve the state using the correct buffer.
-        */
-        StateID id = insert_id_or_pop_state();
-        return lookup_state(id);
     }
+    axiom_evaluator.evaluate(new_values);
+    for (size_t i = 0; i < new_values.size(); ++i) {
+        state_packer.set(buffer, i, new_values[i]);
+    }
+    /*
+      NOTE: insert_id_or_pop_state possibly invalidates buffer, hence
+      we use lookup_state to retrieve the state using the correct buffer.
+    */
+    StateID id = insert_id_or_pop_state();
+    auto predecessor_ptr = std::make_shared<State>(predecessor);
+    if (predecessor.get_is_delta()) {
+        predecessor.set_values_to_null();
+    }
+    return lookup_state(id, predecessor_ptr,  effs, buffer);
 }
 
 int StateRegistry::get_bins_per_state() const {

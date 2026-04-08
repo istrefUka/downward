@@ -198,7 +198,7 @@ public:
       moved in via state_values. It is the caller's responsibility that
       the unpacked data matches the state's data.
     */
-    State lookup_state(StateID id, std::vector<int> &&state_values) const;
+    State lookup_state(StateID id, std::shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const;
 
     /*
       Returns a reference to the initial state and registers it if this was not

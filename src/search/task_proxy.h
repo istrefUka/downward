@@ -16,6 +16,7 @@
 #include <iterator>
 #include <string>
 #include <vector>
+#include <stack>
 
 class AxiomsProxy;
 class ConditionsProxy;
@@ -568,7 +569,7 @@ class State {
     */
     bool is_delta;
     std::shared_ptr<State> parent_state;
-    const std::shared_ptr<std::vector<std::tuple<int, int>>> effs;
+    std::shared_ptr<std::vector<std::tuple<int, int>>> effs;
     const AbstractTask *task;
     const StateRegistry *registry;
     StateID id;
@@ -601,7 +602,7 @@ public:
     State(const AbstractTask &task, std::vector<int> &&values);
     // Construct a registered state with only deltas.
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
-        shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs);
+        std::shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
 
     bool operator==(const State &other) const;
     bool operator!=(const State &other) const;
@@ -610,7 +611,7 @@ public:
        on a state that already has unpacked data has no effect. */
     void unpack() const;
     void fill_variables() const;
-    void create_variables_from_delta() const;
+    std::shared_ptr<std::vector<int>> create_variables_from_delta() const;
 
     std::size_t size() const;
     FactProxy operator[](std::size_t var_id) const;
@@ -633,6 +634,8 @@ public:
     /* Access the packed values. Accessing packed values on states that do
        not have them (unregistered states) is an error. */
     const PackedStateBin *get_buffer() const;
+    inline bool get_is_delta() const;
+    inline void set_values_to_null() const;
 
     /*
       Create a successor state with the given operator. The operator is assumed
@@ -708,6 +711,11 @@ public:
         const StateRegistry &registry, StateID id, const PackedStateBin *buffer,
         std::vector<int> &&state_values) const {
         return State(*task, registry, id, buffer, std::move(state_values));
+    }
+    State create_state(const StateRegistry &registry, StateID id,
+    std::shared_ptr<State> &parent_state,
+    std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const{
+        return State(*task, registry, id, parent_state, effs, buffer);
     }
 
     State get_initial_state() const {
@@ -785,11 +793,10 @@ inline bool State::operator!=(const State &other) const {
 }
 
 //Convention: first number of tuple in effs is position at which change occured, second number is what the change actually was.
-inline void State::create_variables_from_delta() const{
+inline std::shared_ptr<std::vector<int>> State::create_variables_from_delta() const{
     //TODO: was wenn parent_state nicht existiert?
     if (!parent_state) {
         throw std::runtime_error("Already in root node because no parent_state exists!");
-        return;
     }
     std::stack<std::shared_ptr<std::vector<std::tuple<int, int>>>> effs_stack;
     std::shared_ptr<State> current = parent_state;
@@ -812,8 +819,7 @@ inline void State::create_variables_from_delta() const{
             }
 
         }
-        values = calculated_values;
-        return;
+        return calculated_values;
     }
     throw std::runtime_error("No Initial state found in order to reconstruct state!");
 
@@ -844,7 +850,7 @@ inline void State::fill_variables() const {
 inline void State::unpack() const {
     if (!values) {
         if (is_delta) {
-            create_variables_from_delta();
+            values = create_variables_from_delta();
             return;
         }
         fill_variables();
@@ -896,7 +902,14 @@ inline const PackedStateBin *State::get_buffer() const {
     return buffer;
 }
 
-//TODO: get_unpacked_values_delta? (combine unpack and get_unpacked_values?)
+inline bool State::get_is_delta() const {
+    return is_delta;
+}
+
+inline void State::set_values_to_null() const {
+    values = nullptr;
+}
+//TODO: vlt get_unpacked_values_delta, wobei ich statt eine Referenz einfach tatsächlich ein Objekt zurück geben würde, so müsste ich values nicht die ganze Zeit bepacken, stellt sich aber die Frage, ob das nicht ineffizienter ist? (combine unpack and get_unpacked_values?)
 //inline const std::vector<int> &State::get_unpacked_values_delta() const
 
 inline const std::vector<int> &State::get_unpacked_values() const {

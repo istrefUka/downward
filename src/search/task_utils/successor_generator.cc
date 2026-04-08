@@ -16,12 +16,14 @@ SuccessorGenerator::~SuccessorGenerator() = default;
 
 
 
-//TODO: generate_applicable_ops_delta
 
 void SuccessorGenerator::generate_applicable_ops(
     const State &state, vector<OperatorID> &applicable_ops) const {
     state.unpack();
     root->generate_applicable_ops(state.get_unpacked_values(), applicable_ops);
+    if (state.get_is_delta()) {
+        state.set_values_to_null();
+    }
 }
 
 PerTaskInformation<SuccessorGenerator> g_successor_generators;

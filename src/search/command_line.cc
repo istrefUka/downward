@@ -104,11 +104,25 @@ static shared_ptr<SearchAlgorithm> parse_cmd_line_aux(
             ++i;
             const string &search_arg = args[i];
             try {
+                std::cout << "search args: " << search_arg << std::endl;
                 parser::TokenStream tokens = parser::split_tokens(search_arg);
+                std::cout << "Tokens: " << tokens.str(0, tokens.size()) << std::endl;
                 parser::ASTNodePtr parsed = parser::parse(tokens);
+                if (parsed) {
+                    std::cout << "Structure of the search command:" << std::endl;
+                    parsed->dump();
+                }
                 parser::DecoratedASTNodePtr decorated = parsed->decorate();
+                if (decorated) {
+                    std::cout << "decorated Structure:" << std::endl;
+                    decorated->dump();
+                }
                 plugins::Any constructed = decorated->construct();
+                std::cout << "Konstruiertes Objekt vom Typ: " << constructed.type_name() << std::endl;
                 search_algorithm = plugins::any_cast<SearchPtr>(constructed);
+                if (search_algorithm) {
+                    cout << "Actual class type: " << typeid(*search_algorithm).name() << endl;
+                }
             } catch (const plugins::BadAnyCast &) {
                 input_error(
                     "Could not interpret the argument of --search as a search algorithm.");

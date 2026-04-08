@@ -49,16 +49,19 @@ State::State(const AbstractTask &task, vector<int> &&values)
 
 //TODO: How to initialize num_variables?
 State::State(
-    const AbstractTask &task, const StateRegistry &registry, StateID id, shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int>>> &effs)
-    : task(&task),
+    const AbstractTask &task, const StateRegistry &registry, StateID id,
+    std::shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer)
+    : is_delta(true),
+      parent_state(parent_state),
+      effs(effs),
+      task(&task),
       registry(&registry),
       id(id),
-      buffer(nullptr),
+      buffer(buffer),
       values(nullptr),
-      state_packer(nullptr){
+      state_packer(nullptr),
+      num_variables(0) {
     assert(id != StateID::no_state);
-    num_variables = 0;
-    is_delta = true;
 }
 
 State State::get_unregistered_successor(const OperatorProxy &op) const {
