@@ -114,19 +114,27 @@ void TieBreakingOpenList<Entry>::get_path_dependent_evaluators(
 template<class Entry>
 bool TieBreakingOpenList<Entry>::is_dead_end(
     EvaluationContext &eval_context) const {
+    std::cout << "in method is_dead_end " <<std::endl;
     // TODO: Properly document this behaviour.
     // If one safe heuristic detects a dead end, return true.
-    if (is_reliable_dead_end(eval_context))
+    if (is_reliable_dead_end(eval_context)) {
+        std::cout << "is_reliable_dead_end" << std::endl;
         return true;
+    }
+
     // If the first heuristic detects a dead-end and we allow "unsafe
     // pruning", return true.
     if (allow_unsafe_pruning &&
-        eval_context.is_evaluator_value_infinite(evaluators[0].get()))
+        eval_context.is_evaluator_value_infinite(evaluators[0].get())) {
+        std::cout << "allow_unsafe_pruning and dead end" << std::endl;
         return true;
+    }
+
     // Otherwise, return true if all heuristics agree this is a dead-end.
     for (const shared_ptr<Evaluator> &evaluator : evaluators)
         if (!eval_context.is_evaluator_value_infinite(evaluator.get()))
             return false;
+    std::cout << "all heuristics agree this is a dead-end." << std::endl;
     return true;
 }
 

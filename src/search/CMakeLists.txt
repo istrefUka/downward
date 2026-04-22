@@ -92,6 +92,8 @@ create_fast_downward_library(
         abstract_task
         axioms
         command_line
+        delta_state_info
+        delta_state_table
         evaluation_context
         evaluation_result
         evaluator
@@ -475,6 +477,18 @@ create_fast_downward_library(
 )
 
 create_fast_downward_library(
+        NAME my_eager_search
+        HELP "My_Eager search"
+        SOURCES
+        search_algorithms/my_eager_search
+        DEPENDS
+        null_pruning_method
+        ordered_set
+        successor_generator
+        DEPENDENCY_ONLY
+)
+
+create_fast_downward_library(
     NAME plugin_astar
     HELP "A* search"
     SOURCES
@@ -491,6 +505,16 @@ create_fast_downward_library(
         search_algorithms/plugin_eager
     DEPENDS
         eager_search
+        search_common
+)
+
+create_fast_downward_library(
+        NAME plugin_my_eager
+        HELP "My_Eager (i.e., normal) best-first search"
+        SOURCES
+        search_algorithms/plugin_my_eager_search
+        DEPENDS
+        my_eager_search
         search_common
 )
 

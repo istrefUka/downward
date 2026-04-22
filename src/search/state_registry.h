@@ -10,6 +10,9 @@
 #include "algorithms/segmented_vector.h"
 #include "algorithms/subscriber.h"
 #include "utils/hash.h"
+#include "delta_state_table.h"
+#include "delta_state_info.h"
+#include <variant>
 
 #include <set>
 
@@ -165,11 +168,14 @@ class StateRegistry : public subscriber::SubscriberService<StateRegistry> {
     const int num_variables;
 
     segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;
+    std::deque<DeltaStateInfo> delta_state_data_pool;
     StateIDSet registered_states;
+    DeltaStateTable registered_delta_states;
 
     std::unique_ptr<State> cached_initial_state;
 
     StateID insert_id_or_pop_state();
+    StateID insert_id_or_pop_delta_state();
     int get_bins_per_state() const;
 public:
     explicit StateRegistry(const TaskProxy &task_proxy);
@@ -192,6 +198,8 @@ public:
       registries.
     */
     State lookup_state(StateID id) const;
+    State lookup_state(StateID id, std::vector<int> &&state_values) const;
+    State lookup_state_delta(StateID id);
 
     /*
       Like lookup_state above, but creates a state with unpacked data,
@@ -212,8 +220,9 @@ public:
       registers it if this was not done before. This is an expensive operation
       as it includes duplicate checking.
     */
-    State get_successor_state(
+    State get_successor_state_delta(
         const State &predecessor, const OperatorProxy &op);
+    State get_successor_state(const State &predecessor, const OperatorProxy &op);
 
     /*
       Returns the number of states registered so far.

@@ -132,6 +132,8 @@ bool SearchAlgorithm::check_goal_and_set_plan(const State &state) {
         log << values[i] << " ";
     }
     log << endl;
+    log << "Amount of differences to parent: ";
+    log << state.get_effs_size() << endl;
     if (task_properties::is_goal_state(task_proxy, state)) {
         log << "Solution found!" << endl;
         Plan plan;

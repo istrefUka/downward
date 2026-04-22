@@ -603,7 +603,11 @@ public:
     // Construct a registered state with only deltas.
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
         std::shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
-
+    State(const AbstractTask &task, const StateRegistry &registry, StateID id,
+        const std::shared_ptr<State> &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
+    State(const AbstractTask &task, const StateRegistry &registry, StateID id,
+        const std::shared_ptr<State> &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs,
+        const PackedStateBin *buffer, std::vector<int> &&values);
     bool operator==(const State &other) const;
     bool operator!=(const State &other) const;
 
@@ -635,6 +639,9 @@ public:
        not have them (unregistered states) is an error. */
     const PackedStateBin *get_buffer() const;
     inline bool get_is_delta() const;
+    inline int get_effs_size() const;
+    inline std::vector<std::tuple<int, int>> get_effs() const;
+    inline std::shared_ptr<State> get_parent_state() const;
     inline void set_values_to_null() const;
 
     /*
@@ -705,6 +712,18 @@ public:
         const PackedStateBin *buffer) const {
         return State(*task, registry, id, buffer);
     }
+    State create_delta_state(const StateRegistry &registry, StateID id,
+    const std::shared_ptr<State> &parent_state,
+    const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const{
+        std::cout << " in create_delta_state" << std::endl;
+        return State(*task, registry, id, parent_state, effs, buffer);
+    }
+    State create_delta_state(const StateRegistry &registry, StateID id,
+    const std::shared_ptr<State> &parent_state,
+    const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer, std::vector<int> &&values ) const{
+        return State(*task, registry, id, parent_state, effs, buffer, std::move(values));
+    }
+
 
     // This method is meant to be called only by the state registry.
     State create_state(
@@ -719,6 +738,7 @@ public:
     }
 
     State get_initial_state() const {
+        std::cout<< "in get initial state" << std::endl;
         return create_state(task->get_initial_state_values());
     }
 
@@ -733,13 +753,42 @@ public:
       in a class that handles the task transformation and knows about both the
       original and the transformed task.
     */
+    //TODO: Values hinzufügen
     State convert_ancestor_state(const State &ancestor_state) const {
+        std::cout<< "convert ancestor state" << std::endl;
         TaskProxy ancestor_task_proxy = ancestor_state.get_task();
         // Create a copy of the state values for the new state.
         ancestor_state.unpack();
         std::vector<int> state_values = ancestor_state.get_unpacked_values();
+        std::vector<int> old_state_values = ancestor_state.get_unpacked_values();
         task->convert_ancestor_state_values(
             state_values, ancestor_task_proxy.task);
+        /*if (ancestor_state.get_is_delta()) {
+            auto old_effs = ancestor_state.get_effs();
+            auto effs_ptr = std::make_shared<std::vector<std::tuple<int, int>>>();
+            *effs_ptr = old_effs;
+            for (size_t i = 0; i < state_values.size(); ++i) {
+                if (state_values[i] != old_state_values[i]) {
+                    bool found = false;
+                    for (auto &tup : *effs_ptr) {
+                        if (std::get<0>(tup) == static_cast<int>(i)) {
+                            std::get<1>(tup) = state_values[i];
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        effs_ptr->push_back(std::make_tuple(static_cast<int>(i), state_values[i]));
+                    }
+                }
+            }
+            return create_delta_state(*ancestor_state.get_registry(),
+                                ancestor_state.get_id(),
+                                ancestor_state.get_parent_state(),
+                                effs_ptr,
+                                ancestor_state.get_buffer(),
+                                std::move(state_values));
+        }*/
         return create_state(std::move(state_values));
     }
 
@@ -799,12 +848,12 @@ inline std::shared_ptr<std::vector<int>> State::create_variables_from_delta() co
         throw std::runtime_error("Already in root node because no parent_state exists!");
     }
     std::stack<std::shared_ptr<std::vector<std::tuple<int, int>>>> effs_stack;
-    std::shared_ptr<State> current = parent_state;
+    const State *current = this;
     std::shared_ptr<std::vector<int>> calculated_values;
 
     while (current && current->is_delta) {
         effs_stack.push(current->effs);
-        current = current->parent_state;
+        current = current->parent_state.get();
     }
     //Case for Root State
     if (current && !current->is_delta) {
@@ -848,9 +897,18 @@ inline void State::fill_variables() const {
 }
 
 inline void State::unpack() const {
+    std::cout<<"unpacking state " << std::endl;
     if (!values) {
         if (is_delta) {
+            std::cout << "unpacking delta" << std::endl;
             values = create_variables_from_delta();
+            std::vector<int> vals = *values;
+            int size = vals.size();
+            std::cout<<"values from delta: ";
+            for (int var = 0; var < size; ++var) {
+                std::cout << vals[var] ;
+            }
+            std::cout << std::endl;
             return;
         }
         fill_variables();
@@ -904,6 +962,20 @@ inline const PackedStateBin *State::get_buffer() const {
 
 inline bool State::get_is_delta() const {
     return is_delta;
+}
+
+inline int State::get_effs_size() const {
+    if (effs) {
+        return effs->size();
+    }
+    return 0;
+}
+
+inline std::vector<std::tuple<int,int>> State::get_effs() const {
+    return *effs;
+}
+inline std::shared_ptr<State> State::get_parent_state() const {
+    return parent_state;
 }
 
 inline void State::set_values_to_null() const {

@@ -77,7 +77,9 @@ void My_EagerSearch::initialize() {
 
     path_dependent_evaluators.assign(evals.begin(), evals.end());
     //TODO: schauen ob diese Methode immer mit
+    std::cout << "expected wrong state for initial" << std::endl;
     State initial_state = state_registry.get_initial_state();
+    std::cout << "received wrong state from initial" << std::endl;
     for (Evaluator *evaluator : path_dependent_evaluators) {
         evaluator->notify_initial_state(initial_state);
     }
@@ -114,6 +116,7 @@ void My_EagerSearch::print_statistics() const {
 }
 
 SearchStatus My_EagerSearch::step() {
+    std::cout << "in step method" << std::endl;
     optional<SearchNode> node = get_next_node_to_expand();
     if (!node.has_value()) {
         assert(open_list->empty());
@@ -123,12 +126,19 @@ SearchStatus My_EagerSearch::step() {
 
     return expand(node.value());
 }
-
+//TODO: lookup_state den richtigen gebrauchen.
 optional<SearchNode> My_EagerSearch::get_next_node_to_expand() {
+    std::cout << "in get_next_node_to_expand method" << std::endl;
     while (!open_list->empty()) {
+        std::cout<< "open list not empty" << std::endl;
+
         StateID id = open_list->remove_min();
-        State s = state_registry.lookup_state(id);
-        SearchNode node = search_space.get_node(s);
+        State s = state_registry.lookup_state_delta(id);
+        if (!s.get_is_delta()) {
+            std::cout << "s not delta" << std::endl;
+        }
+        std::cout << "out of lookup_state_delta" << std::endl;
+        SearchNode node = search_space.get_node(s); //TODO: könnte Problematische Logik geben
 
         if (node.is_closed())
             continue;
@@ -196,6 +206,7 @@ void My_EagerSearch::collect_preferred_operators_for_node(
 }
 
 SearchStatus My_EagerSearch::expand(const SearchNode &node) {
+    std::cout << "In expand method" << std::endl;
     statistics.inc_expanded();
 
     const State &state = node.get_state();
@@ -208,6 +219,7 @@ SearchStatus My_EagerSearch::expand(const SearchNode &node) {
 
 //TODO: Wichtige Stelle
 void My_EagerSearch::generate_successors(const SearchNode &node) {
+    std::cout << "in generate_successors method" << std::endl;
     const State &state = node.get_state();
 
     vector<OperatorID> applicable_operators;
@@ -228,7 +240,8 @@ void My_EagerSearch::generate_successors(const SearchNode &node) {
         if ((node.get_real_g() + op.get_cost()) >= bound)
             continue;
 
-        State succ_state = state_registry.get_successor_state(state, op);
+        State succ_state = state_registry.get_successor_state_delta(state, op);
+        std::cout<< "out of get_successor_state_delta" << std::endl;
         statistics.inc_generated();
 
         SearchNode succ_node = search_space.get_node(succ_state);
@@ -243,6 +256,7 @@ void My_EagerSearch::generate_successors(const SearchNode &node) {
 
         bool is_preferred = preferred_operators.contains(op_id);
         if (succ_node.is_new()) {
+            std::cout << "New node found" << std::endl;
             /*
               We have not seen this state before.
               Evaluate and create a new node.
@@ -253,11 +267,14 @@ void My_EagerSearch::generate_successors(const SearchNode &node) {
             */
             int succ_g = node.get_g() + get_adjusted_cost(op);
 
+            std::cout << "succ_g: " << succ_g << std::endl;
+
             EvaluationContext succ_eval_context(
                 succ_state, succ_g, is_preferred, &statistics);
             statistics.inc_evaluated_states();
-
+            std::cout << "is preffered: "<< is_preferred << std::endl;
             if (open_list->is_dead_end(succ_eval_context)) {
+                std::cout <<"marked as dead end" << std::endl;
                 succ_node.mark_as_dead_end();
                 statistics.inc_dead_ends();
                 continue;
@@ -336,7 +353,7 @@ void My_EagerSearch::update_f_value_statistics(EvaluationContext &eval_context) 
     }
 }
 
-void add_eager_search_options_to_feature(
+void add_my_eager_search_options_to_feature(
     plugins::Feature &feature, const string &description) {
     add_search_pruning_options_to_feature(feature);
     // We do not add a lazy_evaluator options here
@@ -347,7 +364,7 @@ void add_eager_search_options_to_feature(
 tuple<
     shared_ptr<PruningMethod>, shared_ptr<Evaluator>, OperatorCost, int, double,
     string, utils::Verbosity>
-get_eager_search_arguments_from_options(const plugins::Options &opts) {
+get_my_eager_search_arguments_from_options(const plugins::Options &opts) {
     return tuple_cat(
         get_search_pruning_arguments_from_options(opts),
         make_tuple(opts.get<shared_ptr<Evaluator>>("lazy_evaluator", nullptr)),

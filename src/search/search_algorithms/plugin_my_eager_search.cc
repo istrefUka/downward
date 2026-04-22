@@ -38,7 +38,7 @@ public:
             "[]");
 
         // übernimmt Standard-Search-Optionen
-        my_eager_search::add_eager_search_options_to_feature(
+        my_eager_search::add_my_eager_search_options_to_feature(
             *this,
             "my_eager");
     }
@@ -52,8 +52,7 @@ public:
             opts.get<bool>("reopen_closed"),
             opts.get<shared_ptr<Evaluator>>("f_eval", nullptr),
             opts.get_list<shared_ptr<Evaluator>>("preferred"),
-            my_eager_search::
-                get_eager_search_arguments_from_options(opts));
+            my_eager_search::get_my_eager_search_arguments_from_options(opts));
     }
 };
 

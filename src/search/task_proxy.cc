@@ -24,6 +24,7 @@ State::State(
     assert(buffer);
     assert(num_variables == task.get_num_variables());
     is_delta = false;
+    std::cout << "create wrong state: 4" << std::endl;
 }
 
 State::State(
@@ -33,6 +34,7 @@ State::State(
     assert(num_variables == static_cast<int>(values.size()));
     this->values = make_shared<vector<int>>(move(values));
     is_delta = false;
+    std::cout << "create wrong state: 5 " << std::endl;
 }
 
 State::State(const AbstractTask &task, vector<int> &&values)
@@ -45,14 +47,14 @@ State::State(const AbstractTask &task, vector<int> &&values)
       num_variables(this->values->size()) {
     assert(num_variables == task.get_num_variables());
     is_delta = false;
+    std::cout << "create wrong state: 2" << std::endl;
 }
 
 //TODO: How to initialize num_variables?
 State::State(
     const AbstractTask &task, const StateRegistry &registry, StateID id,
     std::shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer)
-    : is_delta(true),
-      parent_state(parent_state),
+    : parent_state(parent_state),
       effs(effs),
       task(&task),
       registry(&registry),
@@ -62,6 +64,45 @@ State::State(
       state_packer(nullptr),
       num_variables(0) {
     assert(id != StateID::no_state);
+    is_delta = true;
+    std::cout << "is_delta: " << is_delta << std::endl;
+    std::cout << "parent_state: " << parent_state << std::endl;
+}
+State::State(
+    const AbstractTask &task, const StateRegistry &registry, StateID id,
+    const std::shared_ptr<State> &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer)
+    : parent_state(parent_state),
+      effs(effs),
+      task(&task),
+      registry(&registry),
+      id(id),
+      buffer(buffer),
+      values(nullptr),
+      state_packer(nullptr),
+      num_variables(0) {
+    assert(id != StateID::no_state);
+    is_delta = true;
+    std::cout << "is_delta: " << is_delta << std::endl;
+    std::cout << "parent_state: " << parent_state << std::endl;
+}
+
+State::State(
+    const AbstractTask &task, const StateRegistry &registry, StateID id,
+    const std::shared_ptr<State> &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs,
+    const PackedStateBin *buffer, vector<int> &&values)
+    : parent_state(parent_state),
+      effs(effs),
+      task(&task),
+      registry(&registry),
+      id(id),
+      buffer(buffer),
+      state_packer(nullptr),
+      values(make_shared<vector<int>>(move(values))),
+      num_variables(0) {
+    assert(id != StateID::no_state);
+    is_delta = true;
+    std::cout << "is_delta: " << is_delta << std::endl;
+    std::cout << "parent_state: " << parent_state << std::endl;
 }
 
 State State::get_unregistered_successor(const OperatorProxy &op) const {
