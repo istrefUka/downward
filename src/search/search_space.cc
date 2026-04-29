@@ -129,6 +129,7 @@ void SearchSpace::trace_path(
     State current_state = goal_state;
     assert(current_state.get_registry() == &state_registry);
     assert(path.empty());
+    std::cout << "is delta curr_state? = " << current_state.get_is_delta() << std::endl;
     for (;;) {
         const SearchNodeInfo &info = search_node_infos[current_state];
         if (info.creating_operator == OperatorID::no_operator) {
@@ -136,7 +137,16 @@ void SearchSpace::trace_path(
             break;
         }
         path.push_back(info.creating_operator);
-        current_state = state_registry.lookup_state(info.parent_state_id);
+
+        //TODO: check for delta states
+        if (current_state.get_is_delta()) {
+            std::cout << "in delta state trace path" << std::endl;
+            current_state = state_registry.lookup_state_delta(info.parent_state_id);
+        }
+        else {
+            current_state = state_registry.lookup_state(info.parent_state_id);
+        }
+
     }
     reverse(path.begin(), path.end());
 }

@@ -223,11 +223,18 @@ public:
     State get_successor_state_delta(
         const State &predecessor, const OperatorProxy &op);
     State get_successor_state(const State &predecessor, const OperatorProxy &op);
+    int registered_states_no() const;
+    void print_states() const;
+    int registered_delta_states_no() const;
+    void print_delta_states() const;
 
     /*
       Returns the number of states registered so far.
     */
     size_t size() const {
+        if (registered_delta_states_no() > registered_states_no()) {
+            return registered_delta_states_no();
+        }
         return registered_states.size();
     }
 
@@ -288,6 +295,7 @@ public:
     const_iterator end() const {
         return const_iterator(*this, size());
     }
+
 };
 
 #endif

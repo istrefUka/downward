@@ -200,8 +200,14 @@ SearchStatus EagerSearch::expand(const SearchNode &node) {
     statistics.inc_expanded();
 
     const State &state = node.get_state();
-    if (check_goal_and_set_plan(state))
+    if (check_goal_and_set_plan(state)) {
+        std::cout<< "amount of states registered: " << state.get_registry()->registered_states_no() << std::endl;
+        std::cout << "states are: ";
+        std::cout << std::endl;
+        state.get_registry()->print_states();
         return SOLVED;
+    }
+
 
     generate_successors(node);
     return IN_PROGRESS;

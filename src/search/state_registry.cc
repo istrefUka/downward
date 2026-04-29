@@ -61,7 +61,6 @@ StateID StateRegistry::insert_id_or_pop_delta_state() {
 
 //TODO: löschen falls nicht mehr gebraucht.
 State StateRegistry::lookup_state(StateID id) const {
-    std::cout<< "in lookup_state: " <<std::endl;
     const PackedStateBin *buffer = nullptr;
     if (id.value >= state_data_pool.size()) {
         std::cout << "need delta_lookup" << std::endl;
@@ -87,7 +86,6 @@ State StateRegistry::lookup_state(StateID id) const {
 }
 
 State StateRegistry::lookup_state_delta(StateID id) {
-    std::cout << "in lookup_state_delta for ID: " << id.value << std::endl;
     PackedStateBin *buffer = nullptr;
 
     //TODO: was machen, da Root node nicht in delta_state_data_pool ist?
@@ -103,7 +101,6 @@ State StateRegistry::lookup_state_delta(StateID id) {
     if (!delta.parent_state) {
         std::cout << "lookup_state_delta no parent_state for id: " << id.value << std::endl;
     }
-    std::cout << "deque size: " << delta_state_data_pool.size() << std::endl;
     return task_proxy.create_delta_state(*this, id, delta.parent_state, delta.effs, buffer);
 }
 State StateRegistry::lookup_state(
@@ -242,7 +239,6 @@ State StateRegistry::get_successor_state_delta(
         std::cout << "not a valid predecessor_ptr" << std::endl;
     }
 
-    std::cout<< "after push in get_successor_state_delta: "<< delta_state_data_pool.size() << std::endl;
     return lookup_state(id, predecessor_ptr,  effs, buffer);
 }
 
@@ -314,4 +310,32 @@ int StateRegistry::get_state_size_in_bytes() const {
 void StateRegistry::print_statistics(utils::LogProxy &log) const {
     log << "Number of registered states: " << size() << endl;
     registered_states.print_statistics(log);
+}
+
+int StateRegistry::registered_states_no() const{
+    return state_data_pool.size();
+}
+void StateRegistry::print_states() const{
+    for (int i = 0; i < registered_states_no(); ++i) {
+        StateID id(i);
+        State s = lookup_state(id);
+        s.unpack();
+        std::cout << s.get_unpacked_values();
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+int StateRegistry::registered_delta_states_no() const{
+    return delta_state_data_pool.size();
+}
+void StateRegistry::print_delta_states() const{
+    for (int i = 0; i < registered_delta_states_no(); ++i) {
+        StateID id(i);
+        State s = const_cast<StateRegistry*>(this)->lookup_state_delta(id);
+        s.unpack();
+        std::cout << s.get_unpacked_values();
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
 }

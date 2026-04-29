@@ -24,7 +24,6 @@ State::State(
     assert(buffer);
     assert(num_variables == task.get_num_variables());
     is_delta = false;
-    std::cout << "create wrong state: 4" << std::endl;
 }
 
 State::State(
@@ -34,7 +33,6 @@ State::State(
     assert(num_variables == static_cast<int>(values.size()));
     this->values = make_shared<vector<int>>(move(values));
     is_delta = false;
-    std::cout << "create wrong state: 5 " << std::endl;
 }
 
 State::State(const AbstractTask &task, vector<int> &&values)
@@ -47,7 +45,6 @@ State::State(const AbstractTask &task, vector<int> &&values)
       num_variables(this->values->size()) {
     assert(num_variables == task.get_num_variables());
     is_delta = false;
-    std::cout << "create wrong state: 2" << std::endl;
 }
 
 //TODO: How to initialize num_variables?

@@ -210,8 +210,15 @@ SearchStatus My_EagerSearch::expand(const SearchNode &node) {
     statistics.inc_expanded();
 
     const State &state = node.get_state();
-    if (check_goal_and_set_plan(state))
+    std::cout<< "state is delta? = " << state.get_is_delta() << std::endl;
+    if (check_goal_and_set_plan(state)) {
+        std::cout<< "amount of delta states registered: " << state.get_registry()->registered_delta_states_no() << std::endl;
+        std::cout << "delta states are: ";
+        std::cout << std::endl;
+        state.get_registry()->print_delta_states();
         return SOLVED;
+    }
+
 
     generate_successors(node);
     return IN_PROGRESS;

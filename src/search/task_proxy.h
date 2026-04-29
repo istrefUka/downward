@@ -897,14 +897,11 @@ inline void State::fill_variables() const {
 }
 
 inline void State::unpack() const {
-    std::cout<<"unpacking state " << std::endl;
     if (!values) {
         if (is_delta) {
-            std::cout << "unpacking delta" << std::endl;
             values = create_variables_from_delta();
             std::vector<int> vals = *values;
             int size = vals.size();
-            std::cout<<"values from delta: ";
             for (int var = 0; var < size; ++var) {
                 std::cout << vals[var] ;
             }
