@@ -62,8 +62,6 @@ State::State(
       num_variables(0) {
     assert(id != StateID::no_state);
     is_delta = true;
-    std::cout << "is_delta: " << is_delta << std::endl;
-    std::cout << "parent_state: " << parent_state << std::endl;
 }
 State::State(
     const AbstractTask &task, const StateRegistry &registry, StateID id,
@@ -79,8 +77,6 @@ State::State(
       num_variables(0) {
     assert(id != StateID::no_state);
     is_delta = true;
-    std::cout << "is_delta: " << is_delta << std::endl;
-    std::cout << "parent_state: " << parent_state << std::endl;
 }
 
 State::State(
@@ -98,8 +94,6 @@ State::State(
       num_variables(0) {
     assert(id != StateID::no_state);
     is_delta = true;
-    std::cout << "is_delta: " << is_delta << std::endl;
-    std::cout << "parent_state: " << parent_state << std::endl;
 }
 
 State State::get_unregistered_successor(const OperatorProxy &op) const {

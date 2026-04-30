@@ -11,6 +11,7 @@ class StateID;
 template<class Entry>
 class OpenList {
     bool only_preferred;
+    int size;
 
 protected:
     /*
@@ -45,6 +46,7 @@ public:
       do_insertion.
     */
     void insert(EvaluationContext &eval_context, const Entry &entry);
+    int get_size() const;
 
     /*
       Remove and return the entry that should be expanded next.
@@ -144,8 +146,15 @@ void OpenList<Entry>::insert(
     EvaluationContext &eval_context, const Entry &entry) {
     if (only_preferred && !eval_context.is_preferred())
         return;
-    if (!is_dead_end(eval_context))
+    if (!is_dead_end(eval_context)) {
         do_insertion(eval_context, entry);
+        size++;
+    }
+
+}
+template<class Entry>
+int OpenList<Entry>::get_size() const{
+    return size;
 }
 
 template<class Entry>

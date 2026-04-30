@@ -715,7 +715,6 @@ public:
     State create_delta_state(const StateRegistry &registry, StateID id,
     const std::shared_ptr<State> &parent_state,
     const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const{
-        std::cout << " in create_delta_state" << std::endl;
         return State(*task, registry, id, parent_state, effs, buffer);
     }
     State create_delta_state(const StateRegistry &registry, StateID id,
@@ -738,7 +737,6 @@ public:
     }
 
     State get_initial_state() const {
-        std::cout<< "in get initial state" << std::endl;
         return create_state(task->get_initial_state_values());
     }
 
@@ -755,7 +753,6 @@ public:
     */
     //TODO: Values hinzufügen
     State convert_ancestor_state(const State &ancestor_state) const {
-        std::cout<< "convert ancestor state" << std::endl;
         TaskProxy ancestor_task_proxy = ancestor_state.get_task();
         // Create a copy of the state values for the new state.
         ancestor_state.unpack();
@@ -900,12 +897,6 @@ inline void State::unpack() const {
     if (!values) {
         if (is_delta) {
             values = create_variables_from_delta();
-            std::vector<int> vals = *values;
-            int size = vals.size();
-            for (int var = 0; var < size; ++var) {
-                std::cout << vals[var] ;
-            }
-            std::cout << std::endl;
             return;
         }
         fill_variables();

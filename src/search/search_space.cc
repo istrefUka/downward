@@ -140,7 +140,6 @@ void SearchSpace::trace_path(
 
         //TODO: check for delta states
         if (current_state.get_is_delta()) {
-            std::cout << "in delta state trace path" << std::endl;
             current_state = state_registry.lookup_state_delta(info.parent_state_id);
         }
         else {

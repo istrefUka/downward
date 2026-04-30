@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <fcntl.h>
 #include <memory>
 #include <optional>
 #include <set>
@@ -116,7 +117,6 @@ void My_EagerSearch::print_statistics() const {
 }
 
 SearchStatus My_EagerSearch::step() {
-    std::cout << "in step method" << std::endl;
     optional<SearchNode> node = get_next_node_to_expand();
     if (!node.has_value()) {
         assert(open_list->empty());
@@ -126,18 +126,15 @@ SearchStatus My_EagerSearch::step() {
 
     return expand(node.value());
 }
-//TODO: lookup_state den richtigen gebrauchen.
+
 optional<SearchNode> My_EagerSearch::get_next_node_to_expand() {
-    std::cout << "in get_next_node_to_expand method" << std::endl;
     while (!open_list->empty()) {
-        std::cout<< "open list not empty" << std::endl;
 
         StateID id = open_list->remove_min();
         State s = state_registry.lookup_state_delta(id);
         if (!s.get_is_delta()) {
             std::cout << "s not delta" << std::endl;
         }
-        std::cout << "out of lookup_state_delta" << std::endl;
         SearchNode node = search_space.get_node(s); //TODO: könnte Problematische Logik geben
 
         if (node.is_closed())
@@ -206,16 +203,17 @@ void My_EagerSearch::collect_preferred_operators_for_node(
 }
 
 SearchStatus My_EagerSearch::expand(const SearchNode &node) {
-    std::cout << "In expand method" << std::endl;
     statistics.inc_expanded();
 
     const State &state = node.get_state();
-    std::cout<< "state is delta? = " << state.get_is_delta() << std::endl;
     if (check_goal_and_set_plan(state)) {
         std::cout<< "amount of delta states registered: " << state.get_registry()->registered_delta_states_no() << std::endl;
+        std::cout<< "amount of normal states registered in delta mode: " << state.get_registry()->registered_states_no() << std::endl;
         std::cout << "delta states are: ";
         std::cout << std::endl;
         state.get_registry()->print_delta_states();
+        std::cout << "open list size: " << open_list->get_size() << std::endl;
+
         return SOLVED;
     }
 
@@ -226,7 +224,6 @@ SearchStatus My_EagerSearch::expand(const SearchNode &node) {
 
 //TODO: Wichtige Stelle
 void My_EagerSearch::generate_successors(const SearchNode &node) {
-    std::cout << "in generate_successors method" << std::endl;
     const State &state = node.get_state();
 
     vector<OperatorID> applicable_operators;
@@ -248,7 +245,6 @@ void My_EagerSearch::generate_successors(const SearchNode &node) {
             continue;
 
         State succ_state = state_registry.get_successor_state_delta(state, op);
-        std::cout<< "out of get_successor_state_delta" << std::endl;
         statistics.inc_generated();
 
         SearchNode succ_node = search_space.get_node(succ_state);
@@ -263,7 +259,6 @@ void My_EagerSearch::generate_successors(const SearchNode &node) {
 
         bool is_preferred = preferred_operators.contains(op_id);
         if (succ_node.is_new()) {
-            std::cout << "New node found" << std::endl;
             /*
               We have not seen this state before.
               Evaluate and create a new node.
@@ -273,8 +268,6 @@ void My_EagerSearch::generate_successors(const SearchNode &node) {
               TODO: Make this less fragile.
             */
             int succ_g = node.get_g() + get_adjusted_cost(op);
-
-            std::cout << "succ_g: " << succ_g << std::endl;
 
             EvaluationContext succ_eval_context(
                 succ_state, succ_g, is_preferred, &statistics);

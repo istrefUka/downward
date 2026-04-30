@@ -69,7 +69,6 @@ State StateRegistry::lookup_state(StateID id) const {
         if (!delta.parent_state) {
             std::cout << "lookup_state_delta no parent_state for id: " << id.value << std::endl;
         }
-        std::cout << "deque size: " << delta_state_data_pool.size() << std::endl;
         State s = task_proxy.create_delta_state(*this, id, delta.parent_state, delta.effs, buffer);
         s.unpack();
         std::vector<int> new_values = s.get_unpacked_values();
@@ -91,7 +90,6 @@ State StateRegistry::lookup_state_delta(StateID id) {
     //TODO: was machen, da Root node nicht in delta_state_data_pool ist?
     //TODO: state_data_pool verbraucht zu viel speicher
     if (id.value == 0) {
-        std::cout << "create initial state lookup" << std::endl;
         buffer = state_data_pool[id.value];
         return task_proxy.create_state(*this, id, buffer);
     }
@@ -123,7 +121,7 @@ int_hash_set::HashType compute_hash(const vector<int> &new_values) {
 }
 
 const State &StateRegistry::get_initial_state() {
-    std::cout << "in get_initial_state" << std::endl;
+
     if (!cached_initial_state) {
         int num_bins = get_bins_per_state();
         unique_ptr<PackedStateBin[]> buffer(new PackedStateBin[num_bins]);
@@ -138,7 +136,6 @@ const State &StateRegistry::get_initial_state() {
         std::shared_ptr<State> predecessor_ptr = nullptr;
         DeltaStateInfo new_delta = {effs, predecessor_ptr};
         delta_state_data_pool.push_back(new_delta);
-        std::cout<< "after push in get_initial_state : "<< delta_state_data_pool.size() << std::endl;
 
         state_data_pool.push_back(buffer.get());
         StateID id = insert_id_or_pop_state();
@@ -160,7 +157,6 @@ const State &StateRegistry::get_initial_state() {
 
 State StateRegistry::get_successor_state_delta(
     const State &predecessor, const OperatorProxy &op) {
-    cout << "in get successor state" << endl;
     assert(!op.is_axiom());
     /*
       TODO: ideally, we would not modify state_data_pool here and in
@@ -173,11 +169,6 @@ State StateRegistry::get_successor_state_delta(
 
     predecessor.unpack();
     vector<int> new_values = predecessor.get_unpacked_values();
-    std::cout << "predecessor values: ";
-    for (int v : new_values) {
-        std::cout << v << " ";
-    }
-    std::cout << std::endl;
     auto effs = std::make_shared<std::vector<std::tuple<int, int>>>();
     for (EffectProxy effect : op.get_effects()) {
         if (does_fire(effect, predecessor)) {
@@ -187,11 +178,6 @@ State StateRegistry::get_successor_state_delta(
         }
     }
     int_hash_set::HashType hash = compute_hash(new_values);
-    std::cout << "new values: ";
-    for (int v : new_values) {
-        std::cout << v << " ";
-    }
-    std::cout << std::endl;
 
     auto predecessor_ptr = std::make_shared<State>(predecessor);
 
@@ -201,16 +187,13 @@ State StateRegistry::get_successor_state_delta(
 
     InsertResult res = registered_delta_states.insert(hash, id);
     bool insert = true;
-    //bereits vorhanden?
     if (!res.inserted) {
         for (int i = 0; i < res.bucket->size(); ++i) {
             StateID new_id = res.bucket->at(i);
             State s = lookup_state_delta(new_id);
-            std::cout << "in !res.inserted" << std::endl;
             s.unpack();
             std::vector<int> unpacked = s.get_unpacked_values();
             if (unpacked == new_values) {
-                std::cout << "duplicate detected" << std::endl;
                 insert = false;
                 id = new_id;
                 break;
@@ -228,13 +211,9 @@ State StateRegistry::get_successor_state_delta(
     if (predecessor.get_is_delta()) {
       predecessor.set_values_to_null();
     }
-    std::cout << "effects: ";
 
-    for (const auto &[var, value] : *effs) {
-        std::cout << "(" << var << " -> " << value << ") ";
-    }
 
-    std::cout << std::endl;
+
     if (!predecessor_ptr) {
         std::cout << "not a valid predecessor_ptr" << std::endl;
     }
@@ -258,19 +237,11 @@ State StateRegistry::get_successor_state(
     if (task_properties::has_axioms(task_proxy)) {
         predecessor.unpack();
         vector<int> new_values = predecessor.get_unpacked_values();
-        std::cout << "predecessor values: ";
-        for (int v : new_values) {
-            std::cout << v << " ";
-        }
         for (EffectProxy effect : op.get_effects()) {
             if (does_fire(effect, predecessor)) {
                 FactPair effect_pair = effect.get_fact().get_pair();
                 new_values[effect_pair.var] = effect_pair.value;
             }
-        }
-        std::cout << "new values: ";
-        for (int v : new_values) {
-            std::cout << v << " ";
         }
         axiom_evaluator.evaluate(new_values);
         for (size_t i = 0; i < new_values.size(); ++i) {

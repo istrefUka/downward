@@ -1,0 +1,7 @@
+(define (problem MYBLOCKS-simple)
+(:domain MYBLOCKS)
+(:objects A B)
+(:INIT (CLEAR A) (ONTABLE A) (CLEAR B) (ONTABLE B)
+ (HANDEMPTY))
+(:goal (ON A B)
+))
