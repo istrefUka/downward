@@ -114,7 +114,6 @@ void TieBreakingOpenList<Entry>::get_path_dependent_evaluators(
 template<class Entry>
 bool TieBreakingOpenList<Entry>::is_dead_end(
     EvaluationContext &eval_context) const {
-    std::cout << "in method is_dead_end " <<std::endl;
     // TODO: Properly document this behaviour.
     // If one safe heuristic detects a dead end, return true.
     if (is_reliable_dead_end(eval_context)) {

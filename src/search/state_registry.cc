@@ -310,3 +310,31 @@ void StateRegistry::print_delta_states() const{
     }
     std::cout << std::endl;
 }
+
+std::size_t StateRegistry::memory_estimate_delta_states() const {
+    if (delta_state_data_pool.empty()) {
+        return 0;
+    }
+
+    using Effect = std::tuple<int, int>;
+
+    std::size_t total = 0;
+
+    for (const DeltaStateInfo &delta_state : delta_state_data_pool) {
+        total += sizeof(DeltaStateInfo);
+
+        /*
+          parent_state ist ein std::shared_ptr<State>.
+          Der shared_ptr selbst ist bereits in sizeof(DeltaStateInfo) enthalten.
+          Der State, auf den parent_state zeigt, wird hier nicht mitgezählt,
+          weil er ein eigener State ist.
+        */
+
+        if (delta_state.effs) {
+            total += sizeof(std::vector<Effect>);
+            total += delta_state.effs->capacity() * sizeof(Effect);
+        }
+    }
+
+    return total / delta_state_data_pool.size();
+}

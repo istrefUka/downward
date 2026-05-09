@@ -207,13 +207,12 @@ SearchStatus My_EagerSearch::expand(const SearchNode &node) {
 
     const State &state = node.get_state();
     if (check_goal_and_set_plan(state)) {
-        std::cout<< "amount of delta states registered: " << state.get_registry()->registered_delta_states_no() << std::endl;
-        std::cout<< "amount of normal states registered in delta mode: " << state.get_registry()->registered_states_no() << std::endl;
-        std::cout << "delta states are: ";
-        std::cout << std::endl;
-        state.get_registry()->print_delta_states();
+        auto registry = state.get_registry();
+        std::cout<< "amount of delta states registered: " << registry->registered_delta_states_no() << std::endl;
+        std::cout<< "amount of normal states registered in delta mode: " << registry->registered_states_no() << std::endl;
+        int average = registry->memory_estimate_delta_states();
+        std::cout << "estimate of average delta_state memory usage in Bytes: " << average << std::endl;
         std::cout << "open list size: " << open_list->get_size() << std::endl;
-
         return SOLVED;
     }
 
@@ -272,9 +271,7 @@ void My_EagerSearch::generate_successors(const SearchNode &node) {
             EvaluationContext succ_eval_context(
                 succ_state, succ_g, is_preferred, &statistics);
             statistics.inc_evaluated_states();
-            std::cout << "is preffered: "<< is_preferred << std::endl;
             if (open_list->is_dead_end(succ_eval_context)) {
-                std::cout <<"marked as dead end" << std::endl;
                 succ_node.mark_as_dead_end();
                 statistics.inc_dead_ends();
                 continue;

@@ -195,16 +195,14 @@ void EagerSearch::collect_preferred_operators_for_node(
     }
 }
 
-SearchStatus EagerSearch::expand(const SearchNode &node) {
-    std::cout << "In expand method" << std::endl;
-    statistics.inc_expanded();
+SearchStatus EagerSearch::expand(const SearchNode &node) {statistics.inc_expanded();
 
     const State &state = node.get_state();
     if (check_goal_and_set_plan(state)) {
         std::cout<< "amount of states registered: " << state.get_registry()->registered_states_no() << std::endl;
-        std::cout << "states are: ";
-        std::cout << std::endl;
-        state.get_registry()->print_states();
+        // std::cout << "states are: ";
+        // std::cout << std::endl;
+        // state.get_registry()->print_states();
         return SOLVED;
     }
 
@@ -262,7 +260,6 @@ void EagerSearch::generate_successors(const SearchNode &node) {
             EvaluationContext succ_eval_context(
                 succ_state, succ_g, is_preferred, &statistics);
             statistics.inc_evaluated_states();
-            std::cout << "is preffered: "<< is_preferred << std::endl;
             if (open_list->is_dead_end(succ_eval_context)) {
                 succ_node.mark_as_dead_end();
                 statistics.inc_dead_ends();

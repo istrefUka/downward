@@ -168,7 +168,6 @@ class StateRegistry : public subscriber::SubscriberService<StateRegistry> {
     const int num_variables;
 
     segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;
-    std::deque<DeltaStateInfo> delta_state_data_pool;
     StateIDSet registered_states;
     DeltaStateTable registered_delta_states;
 
@@ -178,11 +177,14 @@ class StateRegistry : public subscriber::SubscriberService<StateRegistry> {
     StateID insert_id_or_pop_delta_state();
     int get_bins_per_state() const;
 public:
+    std::deque<DeltaStateInfo> delta_state_data_pool;
     explicit StateRegistry(const TaskProxy &task_proxy);
 
     const TaskProxy &get_task_proxy() const {
         return task_proxy;
     }
+
+    std::size_t memory_estimate_delta_states() const;
 
     int get_num_variables() const {
         return num_variables;

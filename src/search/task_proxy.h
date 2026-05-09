@@ -653,6 +653,7 @@ public:
       unpack() to ensure the data exists.
     */
     State get_unregistered_successor(const OperatorProxy &op) const;
+    std::size_t memory_estimate_bytes() const;
 };
 
 namespace utils {

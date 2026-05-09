@@ -119,3 +119,27 @@ State State::get_unregistered_successor(const OperatorProxy &op) const {
 const causal_graph::CausalGraph &TaskProxy::get_causal_graph() const {
     return causal_graph::get_causal_graph(task);
 }
+
+std::size_t State::memory_estimate_bytes() const {
+    std::size_t size = sizeof(State);
+
+    /*
+      task, registry, buffer, and state_packer are raw pointers.
+      Their pointer values are already included in sizeof(State).
+      The objects they point to are not counted because State does not own them.
+    */
+
+    if (values) {
+        size += sizeof(std::vector<int>);
+        size += values->capacity() * sizeof(int);
+    }
+
+    if (effs) {
+        using Effect = std::tuple<int, int>;
+
+        size += sizeof(std::vector<Effect>);
+        size += effs->capacity() * sizeof(Effect);
+    }
+
+    return size;
+}
