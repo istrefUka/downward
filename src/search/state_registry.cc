@@ -66,7 +66,7 @@ State StateRegistry::lookup_state(StateID id) const {
         std::cout << "need delta_lookup" << std::endl;
         PackedStateBin *buff = nullptr;
         DeltaStateInfo delta = delta_state_data_pool[id.value];
-        if (!delta.parent_state) {
+        if (delta.parent_state == StateID::no_state) {
             std::cout << "lookup_state_delta no parent_state for id: " << id.value << std::endl;
         }
         State s = task_proxy.create_delta_state(*this, id, delta.parent_state, delta.effs, buffer);
@@ -96,13 +96,11 @@ State StateRegistry::lookup_state_delta(StateID id) {
 
 
     DeltaStateInfo delta = delta_state_data_pool[id.value];
-    if (!delta.parent_state) {
-        std::cout << "lookup_state_delta no parent_state for id: " << id.value << std::endl;
-    }
     return task_proxy.create_delta_state(*this, id, delta.parent_state, delta.effs, buffer);
 }
-State StateRegistry::lookup_state(
-StateID id, std::shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const {
+
+State StateRegistry::lookup_state_delta(
+StateID id, StateID &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const {
     return task_proxy.create_delta_state(*this, id, parent_state, effs, buffer);
 }
 State StateRegistry::lookup_state(
@@ -133,8 +131,8 @@ const State &StateRegistry::get_initial_state() {
             state_packer.set(buffer.get(), i, initial_state[i].get_value());
         }
         auto effs = std::make_shared<std::vector<std::tuple<int, int>>>();
-        std::shared_ptr<State> predecessor_ptr = nullptr;
-        DeltaStateInfo new_delta = {effs, predecessor_ptr};
+        StateID parent_state(StateID::no_state);
+        DeltaStateInfo new_delta = {effs, parent_state};
         delta_state_data_pool.push_back(new_delta);
 
         state_data_pool.push_back(buffer.get());
@@ -179,9 +177,8 @@ State StateRegistry::get_successor_state_delta(
     }
     int_hash_set::HashType hash = compute_hash(new_values);
 
-    auto predecessor_ptr = std::make_shared<State>(predecessor);
 
-    DeltaStateInfo new_delta{effs, predecessor_ptr};
+    DeltaStateInfo new_delta{effs, predecessor.get_id()};
 
     StateID id(delta_state_data_pool.size());
 
@@ -212,13 +209,9 @@ State StateRegistry::get_successor_state_delta(
       predecessor.set_values_to_null();
     }
 
+    StateID id_parent(predecessor.get_id().value);
 
-
-    if (!predecessor_ptr) {
-        std::cout << "not a valid predecessor_ptr" << std::endl;
-    }
-
-    return lookup_state(id, predecessor_ptr,  effs, buffer);
+    return lookup_state_delta(id, id_parent,  effs, buffer);
 }
 
 State StateRegistry::get_successor_state(

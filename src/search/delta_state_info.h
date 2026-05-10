@@ -9,7 +9,7 @@ class State;
 
 struct DeltaStateInfo {
     std::shared_ptr<std::vector<std::tuple<int, int>>> effs;
-    std::shared_ptr<State> parent_state;
+    StateID parent_state;
 };
 
 struct InsertResult {

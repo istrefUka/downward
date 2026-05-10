@@ -14,9 +14,9 @@
 #include <cassert>
 #include <cstddef>
 #include <iterator>
+#include <stack>
 #include <string>
 #include <vector>
-#include <stack>
 
 class AxiomsProxy;
 class ConditionsProxy;
@@ -568,7 +568,7 @@ class State {
       have fewer attributes regardless.
     */
     bool is_delta;
-    std::shared_ptr<State> parent_state;
+    StateID parent_state;
     std::shared_ptr<std::vector<std::tuple<int, int>>> effs;
     const AbstractTask *task;
     const StateRegistry *registry;
@@ -602,11 +602,11 @@ public:
     State(const AbstractTask &task, std::vector<int> &&values);
     // Construct a registered state with only deltas.
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
-        std::shared_ptr<State> &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
+        StateID &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
-        const std::shared_ptr<State> &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
+        const StateID &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
-        const std::shared_ptr<State> &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs,
+        const StateID &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs,
         const PackedStateBin *buffer, std::vector<int> &&values);
     bool operator==(const State &other) const;
     bool operator!=(const State &other) const;
@@ -641,7 +641,7 @@ public:
     inline bool get_is_delta() const;
     inline int get_effs_size() const;
     inline std::vector<std::tuple<int, int>> get_effs() const;
-    inline std::shared_ptr<State> get_parent_state() const;
+    inline StateID get_parent_state() const;
     inline void set_values_to_null() const;
 
     /*
@@ -714,12 +714,12 @@ public:
         return State(*task, registry, id, buffer);
     }
     State create_delta_state(const StateRegistry &registry, StateID id,
-    const std::shared_ptr<State> &parent_state,
+    const StateID &parent_state,
     const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const{
         return State(*task, registry, id, parent_state, effs, buffer);
     }
     State create_delta_state(const StateRegistry &registry, StateID id,
-    const std::shared_ptr<State> &parent_state,
+    const StateID &parent_state,
     const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer, std::vector<int> &&values ) const{
         return State(*task, registry, id, parent_state, effs, buffer, std::move(values));
     }
@@ -732,7 +732,7 @@ public:
         return State(*task, registry, id, buffer, std::move(state_values));
     }
     State create_state(const StateRegistry &registry, StateID id,
-    std::shared_ptr<State> &parent_state,
+    StateID &parent_state,
     std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const{
         return State(*task, registry, id, parent_state, effs, buffer);
     }
@@ -840,37 +840,7 @@ inline bool State::operator!=(const State &other) const {
 }
 
 //Convention: first number of tuple in effs is position at which change occured, second number is what the change actually was.
-inline std::shared_ptr<std::vector<int>> State::create_variables_from_delta() const{
-    //TODO: was wenn parent_state nicht existiert?
-    if (!parent_state) {
-        throw std::runtime_error("Already in root node because no parent_state exists!");
-    }
-    std::stack<std::shared_ptr<std::vector<std::tuple<int, int>>>> effs_stack;
-    const State *current = this;
-    std::shared_ptr<std::vector<int>> calculated_values;
 
-    while (current && current->is_delta) {
-        effs_stack.push(current->effs);
-        current = current->parent_state.get();
-    }
-    //Case for Root State
-    if (current && !current->is_delta) {
-        current -> fill_variables();
-        calculated_values = std::make_shared<std::vector<int>>(*current->values);
-        std::shared_ptr<std::vector<std::tuple<int, int>>> current_eff;
-        while (!effs_stack.empty()) {
-            current_eff = effs_stack.top();
-            effs_stack.pop();
-            for (const auto &[idx, value] : *current_eff) {
-                (*calculated_values)[idx] = value;
-            }
-
-        }
-        return calculated_values;
-    }
-    throw std::runtime_error("No Initial state found in order to reconstruct state!");
-
-}
 
 inline void State::fill_variables() const {
     if (!values) {
@@ -963,7 +933,7 @@ inline int State::get_effs_size() const {
 inline std::vector<std::tuple<int,int>> State::get_effs() const {
     return *effs;
 }
-inline std::shared_ptr<State> State::get_parent_state() const {
+inline StateID State::get_parent_state() const {
     return parent_state;
 }
 
