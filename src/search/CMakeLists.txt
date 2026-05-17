@@ -44,7 +44,6 @@ set_up_build_types("Debug;Release")
 set_up_options()
 
 project(downward LANGUAGES CXX)
-add_executable(downward planner.cc)
 
 # obtain git SHA1 hash
 execute_process(
@@ -75,8 +74,8 @@ message(NOTICE "Git revision: \"${GIT_REVISION}\"")
 
 configure_file(git_revision.h.in git_revision.h)
 # The header is generated in ${PROJECT_BINARY_DIR}. Add it to the include path.
-target_include_directories(downward PUBLIC "${PROJECT_BINARY_DIR}")
-
+include_directories("${PROJECT_BINARY_DIR}")
+add_executable(downward planner.cc)
 # On Windows we have to copy all DLLs next to the generated binary.
 if (WIN32)
     copy_dlls_to_binary_dir_after_build(downward)
@@ -122,6 +121,7 @@ create_fast_downward_library(
         causal_graph
         int_hash_set
         int_packer
+        int_packer_delta
         ordered_set
         segmented_vector
         subscriber
@@ -274,6 +274,14 @@ create_fast_downward_library(
     SOURCES
         algorithms/int_packer
     DEPENDENCY_ONLY
+)
+
+create_fast_downward_library(
+        NAME int_packer_delta
+        HELP "Greedy bin packing algorithm to pack integer variables with small domains tightly into memory"
+        SOURCES
+        algorithms/int_packer_delta
+        DEPENDENCY_ONLY
 )
 
 create_fast_downward_library(

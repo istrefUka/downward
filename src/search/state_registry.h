@@ -3,19 +3,20 @@
 
 #include "abstract_task.h"
 #include "axioms.h"
+#include "delta_state_info.h"
+#include "delta_state_table.h"
 #include "state_id.h"
 
 #include "algorithms/int_hash_set.h"
 #include "algorithms/int_packer.h"
+#include "algorithms/int_packer_delta.h"
 #include "algorithms/segmented_vector.h"
 #include "algorithms/subscriber.h"
 #include "utils/hash.h"
-#include "delta_state_table.h"
-#include "delta_state_info.h"
-#include <variant>
 
-#include <set>
 #include <deque>
+#include <set>
+#include <variant>
 /*
   Overview of classes relevant to storing and working with registered states.
 
@@ -164,6 +165,7 @@ class StateRegistry : public subscriber::SubscriberService<StateRegistry> {
 
     TaskProxy task_proxy;
     const int_packer::IntPacker &state_packer;
+    DeltaPacker delta_packer;
     AxiomEvaluator &axiom_evaluator;
     const int num_variables;
 
@@ -177,7 +179,7 @@ class StateRegistry : public subscriber::SubscriberService<StateRegistry> {
     StateID insert_id_or_pop_delta_state();
     int get_bins_per_state() const;
 public:
-    std::deque<DeltaStateInfo> delta_state_data_pool;
+    std::vector<DeltaStateInfo> delta_state_data_pool;
     explicit StateRegistry(const TaskProxy &task_proxy);
 
     const TaskProxy &get_task_proxy() const {
@@ -208,7 +210,7 @@ public:
       moved in via state_values. It is the caller's responsibility that
       the unpacked data matches the state's data.
     */
-    State lookup_state_delta(StateID id, StateID &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const;
+    State lookup_state_delta(StateID id, StateID parent_state, std::vector<std::tuple<int, int>> effs, const PackedStateBin *buffer) const;
 
     /*
       Returns a reference to the initial state and registers it if this was not

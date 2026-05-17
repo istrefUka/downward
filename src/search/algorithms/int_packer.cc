@@ -1,6 +1,8 @@
 #include "int_packer.h"
 
 #include <cassert>
+#include <iostream>
+#include <ostream>
 
 using namespace std;
 
@@ -66,7 +68,7 @@ public:
     }
 };
 
-IntPacker::IntPacker(const vector<int> &ranges) : num_bins(0) {
+IntPacker::IntPacker(const vector<int> &ranges) : num_bins(0), ranges(ranges) {
     pack_bins(ranges);
 }
 
@@ -81,6 +83,10 @@ void IntPacker::set(Bin *buffer, int var, int value) const {
     var_infos[var].set(buffer, value);
 }
 
+std::vector<int> IntPacker::get_ranges() const{
+    std::cout << "length of array ranges: " << ranges.size() << std::endl;
+    return ranges;
+}
 void IntPacker::pack_bins(const vector<int> &ranges) {
     assert(var_infos.empty());
 
@@ -103,7 +109,7 @@ void IntPacker::pack_bins(const vector<int> &ranges) {
     while (packed_vars != num_vars)
         packed_vars += pack_one_bin(ranges, bits_to_vars);
 }
-
+//TODO: how to use with delta variables?
 int IntPacker::pack_one_bin(
     const vector<int> &ranges, vector<vector<int>> &bits_to_vars) {
     // Returns the number of variables added to the bin. We pack each

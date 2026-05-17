@@ -51,7 +51,7 @@ State::State(const AbstractTask &task, vector<int> &&values)
 
 State::State(
     const AbstractTask &task, const StateRegistry &registry, StateID id,
-    StateID &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer)
+    StateID &parent_state, std::vector<std::tuple<int, int>> &effs, const PackedStateBin *buffer)
     : parent_state(parent_state),
       effs(effs),
       task(&task),
@@ -66,7 +66,7 @@ State::State(
 }
 State::State(
     const AbstractTask &task, const StateRegistry &registry, StateID id,
-    const StateID &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer)
+    const StateID &parent_state, const std::vector<std::tuple<int, int>> &effs, const PackedStateBin *buffer)
     : parent_state(parent_state),
       effs(effs),
       task(&task),
@@ -82,7 +82,7 @@ State::State(
 
 State::State(
     const AbstractTask &task, const StateRegistry &registry, StateID id,
-    const StateID &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs,
+    const StateID &parent_state, const std::vector<std::tuple<int, int>> &effs,
     const PackedStateBin *buffer, vector<int> &&values)
     : parent_state(parent_state),
       effs(effs),
@@ -121,36 +121,13 @@ const causal_graph::CausalGraph &TaskProxy::get_causal_graph() const {
     return causal_graph::get_causal_graph(task);
 }
 
-std::size_t State::memory_estimate_bytes() const {
-    std::size_t size = sizeof(State);
 
-    /*
-      task, registry, buffer, and state_packer are raw pointers.
-      Their pointer values are already included in sizeof(State).
-      The objects they point to are not counted because State does not own them.
-    */
-
-    if (values) {
-        size += sizeof(std::vector<int>);
-        size += values->capacity() * sizeof(int);
-    }
-
-    if (effs) {
-        using Effect = std::tuple<int, int>;
-
-        size += sizeof(std::vector<Effect>);
-        size += effs->capacity() * sizeof(Effect);
-    }
-
-    return size;
-}
-
+//TODO: calculate effs -1
 std::shared_ptr<std::vector<int>> State::create_variables_from_delta() const{
-    //TODO: was wenn parent_state nicht existiert?
     if (parent_state == StateID::no_state ) {
         throw std::runtime_error("Already in root node because no parent_state exists!");
     }
-    std::stack<std::shared_ptr<std::vector<std::tuple<int, int>>>> effs_stack;
+    std::stack<std::vector<std::tuple<int, int>>> effs_stack;
     State current = *this;
     std::shared_ptr<std::vector<int>> calculated_values;
 
@@ -158,16 +135,17 @@ std::shared_ptr<std::vector<int>> State::create_variables_from_delta() const{
         effs_stack.push(current.effs);
         current = const_cast<StateRegistry*>(current.get_registry())->lookup_state_delta(current.parent_state);
     }
+    std::cout << "effs_stack size: "<< effs_stack.size() << std::endl;
     //Case for Root State
     if (!current.is_delta) {
         current.fill_variables();
         calculated_values = std::make_shared<std::vector<int>>(*current.values);
-        std::shared_ptr<std::vector<std::tuple<int, int>>> current_eff;
+        std::vector<std::tuple<int, int>> current_eff;
         while (!effs_stack.empty()) {
             current_eff = effs_stack.top();
             effs_stack.pop();
-            for (const auto &[idx, value] : *current_eff) {
-                (*calculated_values)[idx] = value;
+            for (const auto &[idx, value] : current_eff) {
+                (*calculated_values)[idx-1] = value;
             }
 
         }

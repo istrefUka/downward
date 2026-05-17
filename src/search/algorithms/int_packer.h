@@ -20,6 +20,7 @@
 namespace int_packer {
 class IntPacker {
     class VariableInfo;
+    const std::vector<int> ranges;
 
     std::vector<VariableInfo> var_infos;
     int num_bins;
@@ -30,6 +31,7 @@ class IntPacker {
     void pack_bins(const std::vector<int> &ranges);
 public:
     typedef unsigned int Bin;
+    std::vector<int> get_ranges() const;
 
     /*
       The constructor takes the range for each variable. The domain of

@@ -1,5 +1,4 @@
 #include "state_registry.h"
-
 #include "per_state_information.h"
 #include "task_proxy.h"
 
@@ -7,10 +6,11 @@
 #include "utils/logging.h"
 
 using namespace std;
-
+//TODO: initialize delta_packer
 StateRegistry::StateRegistry(const TaskProxy &task_proxy)
     : task_proxy(task_proxy),
       state_packer(task_properties::g_state_packers[task_proxy]),
+      delta_packer(state_packer.get_ranges()),
       axiom_evaluator(g_axiom_evaluators[task_proxy]),
       num_variables(task_proxy.get_variables().size()),
       state_data_pool(get_bins_per_state()),
@@ -60,7 +60,7 @@ StateID StateRegistry::insert_id_or_pop_delta_state() {
 }
 
 //TODO: löschen falls nicht mehr gebraucht.
-State StateRegistry::lookup_state(StateID id) const {
+State StateRegistry::lookup_state(StateID id) const{
     const PackedStateBin *buffer = nullptr;
     if (id.value >= state_data_pool.size()) {
         std::cout << "need delta_lookup" << std::endl;
@@ -69,7 +69,8 @@ State StateRegistry::lookup_state(StateID id) const {
         if (delta.parent_state == StateID::no_state) {
             std::cout << "lookup_state_delta no parent_state for id: " << id.value << std::endl;
         }
-        State s = task_proxy.create_delta_state(*this, id, delta.parent_state, delta.effs, buffer);
+        std::vector<std::tuple<int, int>> effs = delta_packer.get_buffer(delta_state_data_pool, id.value);
+        State s = task_proxy.create_delta_state(*this, id, delta.parent_state, effs, buffer);
         s.unpack();
         std::vector<int> new_values = s.get_unpacked_values();
         for (size_t i = 0; i < new_values.size(); ++i) {
@@ -96,11 +97,12 @@ State StateRegistry::lookup_state_delta(StateID id) {
 
 
     DeltaStateInfo delta = delta_state_data_pool[id.value];
-    return task_proxy.create_delta_state(*this, id, delta.parent_state, delta.effs, buffer);
+    std::vector<std::tuple<int, int>> effs = delta_packer.get_buffer(delta_state_data_pool, id.value);
+    return task_proxy.create_delta_state(*this, id, delta.parent_state, effs, buffer);
 }
 
 State StateRegistry::lookup_state_delta(
-StateID id, StateID &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const {
+StateID id, StateID parent_state, std::vector<std::tuple<int, int>> effs, const PackedStateBin *buffer) const {
     return task_proxy.create_delta_state(*this, id, parent_state, effs, buffer);
 }
 State StateRegistry::lookup_state(
@@ -130,11 +132,12 @@ const State &StateRegistry::get_initial_state() {
         for (size_t i = 0; i < initial_state.size(); ++i) {
             state_packer.set(buffer.get(), i, initial_state[i].get_value());
         }
-        auto effs = std::make_shared<std::vector<std::tuple<int, int>>>();
+        delta_packer.set_effs_range(initial_state.size() + 1);
+        auto effs = std::vector<std::tuple<int, int>>();
         StateID parent_state(StateID::no_state);
-        DeltaStateInfo new_delta = {effs, parent_state};
+        PackedStateBin buffer_delta = -1;
+        DeltaStateInfo new_delta = {buffer_delta, parent_state};
         delta_state_data_pool.push_back(new_delta);
-
         state_data_pool.push_back(buffer.get());
         StateID id = insert_id_or_pop_state();
         cached_initial_state = make_unique<State>(lookup_state(id));
@@ -145,14 +148,8 @@ const State &StateRegistry::get_initial_state() {
     return *cached_initial_state;
 }
 
-// TODO it would be nice to move the actual state creation (and operator
-// application)
-//      out of the StateRegistry. This could for example be done by global
-//      functions operating on state buffers (PackedStateBin *).
-//TODO: lookup state anschauen und anschauen was machen wegen unpack, da Lösung wie in successor_generator nicht ganz optimal ist.
-//TODO: Nur delta state kreieren, falls sich lohnt.
-//TODO: get_successor_state_ delta and bring back old successor state
 
+//TODO: effs+1
 State StateRegistry::get_successor_state_delta(
     const State &predecessor, const OperatorProxy &op) {
     assert(!op.is_axiom());
@@ -167,21 +164,19 @@ State StateRegistry::get_successor_state_delta(
 
     predecessor.unpack();
     vector<int> new_values = predecessor.get_unpacked_values();
-    auto effs = std::make_shared<std::vector<std::tuple<int, int>>>();
+    auto effs = std::vector<std::tuple<int, int>>();
     for (EffectProxy effect : op.get_effects()) {
         if (does_fire(effect, predecessor)) {
             FactPair effect_pair = effect.get_fact().get_pair();
-            effs->emplace_back(effect_pair.var, effect_pair.value);
+            effs.emplace_back((effect_pair.var+1), effect_pair.value);
             new_values[effect_pair.var] = effect_pair.value;
         }
     }
     int_hash_set::HashType hash = compute_hash(new_values);
 
-
-    DeltaStateInfo new_delta{effs, predecessor.get_id()};
-
+    //TODO: only create buffer_delta when needed
+    std::vector<PackedStateBin> buffer_delta = delta_packer.create_buffer(effs);
     StateID id(delta_state_data_pool.size());
-
     InsertResult res = registered_delta_states.insert(hash, id);
     bool insert = true;
     if (!res.inserted) {
@@ -198,12 +193,20 @@ State StateRegistry::get_successor_state_delta(
         }
         if (insert) {
             registered_delta_states.insert_force(hash, id);
-            delta_state_data_pool.push_back(new_delta);
+            for (int i = 0; i < buffer_delta.size(); ++i) {
+                DeltaStateInfo new_delta = {buffer_delta[i], predecessor.get_id()};
+                delta_state_data_pool.push_back(new_delta);
+            }
+            std::vector<std::tuple<int, int>> effs_calc = delta_packer.get_buffer(delta_state_data_pool, id.value);
         }
     }
     if (res.inserted) {
-        delta_state_data_pool.push_back(new_delta);
+        for (int i = 0; i < buffer_delta.size(); ++i) {
+            DeltaStateInfo new_delta = {buffer_delta[i], predecessor.get_id()};
+            delta_state_data_pool.push_back(new_delta);
+        }
     }
+
     assert(delta_state_data_pool.size() == registered_delta_states.get_table().size());
     if (predecessor.get_is_delta()) {
       predecessor.set_values_to_null();
@@ -315,18 +318,6 @@ std::size_t StateRegistry::memory_estimate_delta_states() const {
 
     for (const DeltaStateInfo &delta_state : delta_state_data_pool) {
         total += sizeof(DeltaStateInfo);
-
-        /*
-          parent_state ist ein std::shared_ptr<State>.
-          Der shared_ptr selbst ist bereits in sizeof(DeltaStateInfo) enthalten.
-          Der State, auf den parent_state zeigt, wird hier nicht mitgezählt,
-          weil er ein eigener State ist.
-        */
-
-        if (delta_state.effs) {
-            total += sizeof(std::vector<Effect>);
-            total += delta_state.effs->capacity() * sizeof(Effect);
-        }
     }
 
     return total / delta_state_data_pool.size();

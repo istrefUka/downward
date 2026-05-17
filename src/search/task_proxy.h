@@ -569,7 +569,8 @@ class State {
     */
     bool is_delta;
     StateID parent_state;
-    std::shared_ptr<std::vector<std::tuple<int, int>>> effs;
+    //Convention: first number of tuple in effs is position at which change occured, second number is what the change actually was.
+    std::vector<std::tuple<int, int>> effs;
     const AbstractTask *task;
     const StateRegistry *registry;
     StateID id;
@@ -602,11 +603,11 @@ public:
     State(const AbstractTask &task, std::vector<int> &&values);
     // Construct a registered state with only deltas.
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
-        StateID &parent_state, std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
+        StateID &parent_state, std::vector<std::tuple<int, int>> &effs, const PackedStateBin *buffer);
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
-        const StateID &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer);
+        const StateID &parent_state, const std::vector<std::tuple<int, int>> &effs, const PackedStateBin *buffer);
     State(const AbstractTask &task, const StateRegistry &registry, StateID id,
-        const StateID &parent_state, const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs,
+        const StateID &parent_state, const std::vector<std::tuple<int, int>> &effs,
         const PackedStateBin *buffer, std::vector<int> &&values);
     bool operator==(const State &other) const;
     bool operator!=(const State &other) const;
@@ -653,7 +654,6 @@ public:
       unpack() to ensure the data exists.
     */
     State get_unregistered_successor(const OperatorProxy &op) const;
-    std::size_t memory_estimate_bytes() const;
 };
 
 namespace utils {
@@ -715,12 +715,12 @@ public:
     }
     State create_delta_state(const StateRegistry &registry, StateID id,
     const StateID &parent_state,
-    const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const{
+    const std::vector<std::tuple<int, int>> &effs, const PackedStateBin *buffer) const{
         return State(*task, registry, id, parent_state, effs, buffer);
     }
     State create_delta_state(const StateRegistry &registry, StateID id,
     const StateID &parent_state,
-    const std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer, std::vector<int> &&values ) const{
+    const std::vector<std::tuple<int, int>> &effs, const PackedStateBin *buffer, std::vector<int> &&values ) const{
         return State(*task, registry, id, parent_state, effs, buffer, std::move(values));
     }
 
@@ -733,7 +733,7 @@ public:
     }
     State create_state(const StateRegistry &registry, StateID id,
     StateID &parent_state,
-    std::shared_ptr<std::vector<std::tuple<int, int>>> &effs, const PackedStateBin *buffer) const{
+    std::vector<std::tuple<int, int>> &effs, const PackedStateBin *buffer) const{
         return State(*task, registry, id, parent_state, effs, buffer);
     }
 
@@ -839,7 +839,7 @@ inline bool State::operator!=(const State &other) const {
     return !(*this == other);
 }
 
-//Convention: first number of tuple in effs is position at which change occured, second number is what the change actually was.
+
 
 
 inline void State::fill_variables() const {
@@ -924,14 +924,12 @@ inline bool State::get_is_delta() const {
 }
 
 inline int State::get_effs_size() const {
-    if (effs) {
-        return effs->size();
-    }
-    return 0;
+
+    return effs.size();
 }
 
 inline std::vector<std::tuple<int,int>> State::get_effs() const {
-    return *effs;
+    return effs;
 }
 inline StateID State::get_parent_state() const {
     return parent_state;
