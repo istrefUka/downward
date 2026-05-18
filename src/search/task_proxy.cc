@@ -123,34 +123,50 @@ const causal_graph::CausalGraph &TaskProxy::get_causal_graph() const {
 
 
 //TODO: calculate effs -1
-std::shared_ptr<std::vector<int>> State::create_variables_from_delta() const{
-    if (parent_state == StateID::no_state ) {
+std::shared_ptr<std::vector<int>> State::create_variables_from_delta() const {
+    if (parent_state == StateID::no_state) {
         throw std::runtime_error("Already in root node because no parent_state exists!");
     }
-    std::stack<std::vector<std::tuple<int, int>>> effs_stack;
+
     State current = *this;
-    std::shared_ptr<std::vector<int>> calculated_values;
+
+    std::vector<std::tuple<int, int>> effects;
+    std::unordered_set<int> seen_indices;
+
+    effects.reserve(current.effs.size());
+    seen_indices.reserve(current.effs.size());
+
+    auto add_effects_if_missing = [&](const std::vector<std::tuple<int, int>>& effs) {
+        for (const auto& eff : effs) {
+            const int idx = std::get<0>(eff);
+
+            if (seen_indices.insert(idx).second) {
+                effects.push_back(eff);
+            }
+        }
+    };
+
+    add_effects_if_missing(current.effs);
 
     while (current.is_delta) {
-        effs_stack.push(current.effs);
-        current = const_cast<StateRegistry*>(current.get_registry())->lookup_state_delta(current.parent_state);
+        current = const_cast<StateRegistry*>(current.get_registry())
+                      ->lookup_state_delta(current.parent_state);
+
+        add_effects_if_missing(current.effs);
     }
-    std::cout << "effs_stack size: "<< effs_stack.size() << std::endl;
-    //Case for Root State
+
     if (!current.is_delta) {
         current.fill_variables();
-        calculated_values = std::make_shared<std::vector<int>>(*current.values);
-        std::vector<std::tuple<int, int>> current_eff;
-        while (!effs_stack.empty()) {
-            current_eff = effs_stack.top();
-            effs_stack.pop();
-            for (const auto &[idx, value] : current_eff) {
-                (*calculated_values)[idx-1] = value;
-            }
 
+        auto calculated_values =
+            std::make_shared<std::vector<int>>(*current.values);
+
+        for (const auto& [idx, value] : effects) {
+            (*calculated_values)[idx - 1] = value;
         }
+
         return calculated_values;
     }
-    throw std::runtime_error("No Initial state found in order to reconstruct state!");
 
+    throw std::runtime_error("No Initial state found in order to reconstruct state!");
 }
