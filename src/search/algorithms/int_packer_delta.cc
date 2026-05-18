@@ -104,7 +104,7 @@ int create_mask(int bit_size) {
     return (1 << bit_size) - 1;
 }
 
-int read_bits(int shift, int bit_size, DeltaPacker::Bin &buffer){
+int read_bits(int shift, int bit_size, DeltaPacker::Bin buffer){
     int mask = create_mask(bit_size);
     return (buffer >> shift) & mask;
 }
@@ -173,7 +173,7 @@ std::vector<DeltaPacker::Bin> DeltaPacker::create_buffer(std::vector<std::tuple<
 //TODO: implement this method (reverse of DeltaPacker::create_buffer)
 //TODO: einmal müssen wir den State hergeben aufgrund von der StateID und den gespeicherten states, einmal
 
-std::vector<std::tuple<int, int>> DeltaPacker::get_buffer(std::vector<DeltaStateInfo> buffer, int StateID) const{
+std::vector<std::tuple<int, int>> DeltaPacker::get_buffer(const std::vector<DeltaStateInfo> &buffer, int StateID) const{
     int effs_bits = get_bit_size_for_range(this->effs_range);
     int eff = 0;
     int index = StateID;

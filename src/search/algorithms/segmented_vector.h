@@ -237,6 +237,17 @@ public:
     size_t size() const {
         return the_size;
     }
+    std::size_t memory_estimate() const {
+        std::size_t total = sizeof(*this);
+
+        // Memory used by the vector of segment pointers.
+        total += segments.capacity() * sizeof(Element *);
+
+        // Memory allocated for all segments.
+        total += segments.size() * elements_per_segment * sizeof(Element);
+
+        return total;
+    }
 
     void push_back(const Element *entry) {
         size_t segment = get_segment(the_size);

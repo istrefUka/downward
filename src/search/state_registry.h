@@ -299,6 +299,9 @@ public:
     const_iterator end() const {
         return const_iterator(*this, size());
     }
+    int get_memory_size_delta_management() const;
+    int get_memory_size_states() const;
+    int get_memory_size_menagement() const;
 
 };
 

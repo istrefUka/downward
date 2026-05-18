@@ -20,7 +20,7 @@ public:
     typedef unsigned int Bin;
     std::vector<Bin> create_buffer(std::vector<std::tuple<int, int>> &effs);
 
-    std::vector<std::tuple<int, int>> get_buffer(std::vector<DeltaStateInfo> buffer, int StateID) const;
+    std::vector<std::tuple<int, int>> get_buffer(const std::vector<DeltaStateInfo> &buffer, int StateID) const;
     /*
       The constructor takes the range for each variable. The domain of
       variable i is {0, ..., ranges[i] - 1}. Because we are using signed

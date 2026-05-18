@@ -127,7 +127,10 @@ void SearchAlgorithm::search() {
 bool SearchAlgorithm::check_goal_and_set_plan(const State &state) {
     log << "Checking state: ";
     state.unpack();
-    std::cout << "memory for states: "<< state.get_registry()->delta_state_data_pool.capacity()*sizeof(int) <<std::endl;
+    std::cout << "memory for delta states in bytes: "<< state.get_registry()->delta_state_data_pool.capacity()*sizeof(state.get_registry()->delta_state_data_pool[0]) <<std::endl;
+    std::cout << "memory for delta states menagement in bytes: " << state.get_registry()->get_memory_size_delta_management() << std::endl;
+    std:: cout << "memory for normal states in bytes: " << state.get_registry()->get_memory_size_states() <<std::endl;
+    std::cout << "memory for normal states management in bytes: " << state.get_registry()->get_memory_size_menagement() << std::endl;
     const std::vector<int> &values = state.get_unpacked_values();
     for (size_t i = 0; i < values.size(); ++i) {
         log << values[i] << " ";

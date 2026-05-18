@@ -322,3 +322,17 @@ std::size_t StateRegistry::memory_estimate_delta_states() const {
 
     return total / delta_state_data_pool.size();
 }
+//TODO:   compute memory size of DeltaStateTable registered_delta_states;
+int StateRegistry::get_memory_size_delta_management() const {
+    return static_cast<int>(registered_delta_states.memory_estimate());
+}
+
+//TODO: compute memory size of const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
+int StateRegistry::get_memory_size_states() const {
+    return static_cast<int>(state_data_pool.memory_estimate());
+}
+
+//TODO: compute memory size of StateIDSet registered_states;
+int StateRegistry::get_memory_size_menagement() const {
+    return static_cast<int>(registered_states.memory_estimate());
+}

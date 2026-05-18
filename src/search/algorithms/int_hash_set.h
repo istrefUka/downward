@@ -12,6 +12,7 @@
 #include <limits>
 #include <utility>
 #include <vector>
+#include <cstddef>
 
 namespace int_hash_set {
 /*
@@ -316,6 +317,9 @@ public:
             << " = " << static_cast<double>(num_entries) / num_buckets
             << std::endl;
         log << "Int hash set resizes: " << num_resizes << std::endl;
+    }
+    std::size_t memory_estimate() const {
+        return sizeof(*this) + buckets.capacity() * sizeof(Bucket);
     }
 };
 

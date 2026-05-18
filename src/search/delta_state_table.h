@@ -11,7 +11,8 @@ class DeltaStateTable {
     std::unordered_map<int_hash_set::HashType, std::vector<StateID>> table;
 
 public:
-    std::unordered_map<int_hash_set::HashType, std::vector<StateID>> get_table();
+    std::unordered_map<int_hash_set::HashType, std::vector<StateID>> & get_table();
     void insert_force(int_hash_set::HashType hash, StateID id);
     InsertResult insert(int_hash_set::HashType hash, StateID id);
+    std::size_t memory_estimate() const;
 };
