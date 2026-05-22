@@ -17,6 +17,7 @@
 #include <deque>
 #include <set>
 #include <variant>
+#include "algorithms/int_hash_set_delta.h"
 /*
   Overview of classes relevant to storing and working with registered states.
 
@@ -109,6 +110,8 @@
     The heuristic object uses an attribute of type PerStateBitset to store for
   each state and each landmark whether it was reached in this state.
 */
+
+//TODO: registered delta states should use int_hash_set_delta and also create struct for equal
 namespace int_packer {
 class IntPacker;
 }
@@ -155,6 +158,26 @@ class StateRegistry : public subscriber::SubscriberService<StateRegistry> {
         }
     };
 
+    struct DeltaStateIDSemanticEqual {
+        StateRegistry &registry;
+
+        DeltaStateIDSemanticEqual(
+            StateRegistry &registry)
+            : registry(registry){
+        }
+
+        bool operator()(int lhs, int rhs) const{
+            StateID id_lhs(lhs);
+            State lhs_state = registry.lookup_state_delta(id_lhs);
+            lhs_state.unpack();
+            std::vector<int> lhs_vals = lhs_state.get_unpacked_values();
+            StateID id_rhs(rhs);
+            State rhs_state = registry.lookup_state_delta(id_rhs);
+            rhs_state.unpack();
+            std::vector<int> rhs_vals = rhs_state.get_unpacked_values();
+            return lhs_vals == rhs_vals;
+        }
+    };
     /*
       Hash set of StateIDs used to detect states that are already registered in
       this registry and find their IDs. States are compared/hashed semantically,
@@ -162,6 +185,8 @@ class StateRegistry : public subscriber::SubscriberService<StateRegistry> {
     */
     using StateIDSet =
         int_hash_set::IntHashSet<StateIDSemanticHash, StateIDSemanticEqual>;
+    using DeltaStateIDSet =
+        IntHashSetDelta;
 
     TaskProxy task_proxy;
     const int_packer::IntPacker &state_packer;
@@ -170,16 +195,16 @@ class StateRegistry : public subscriber::SubscriberService<StateRegistry> {
     const int num_variables;
 
     segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;
+    std::vector<DeltaStateInfo> delta_state_data_pool;
     StateIDSet registered_states;
-    DeltaStateTable registered_delta_states;
+    DeltaStateIDSet registered_delta_states;
 
     std::unique_ptr<State> cached_initial_state;
 
     StateID insert_id_or_pop_state();
-    StateID insert_id_or_pop_delta_state();
+    StateID insert_id_or_pop_delta_state(HashType hash, StateID id);
     int get_bins_per_state() const;
 public:
-    std::vector<DeltaStateInfo> delta_state_data_pool;
     explicit StateRegistry(const TaskProxy &task_proxy);
 
     const TaskProxy &get_task_proxy() const {
@@ -245,6 +270,8 @@ public:
     int get_state_size_in_bytes() const;
 
     void print_statistics(utils::LogProxy &log) const;
+
+    const std::vector<DeltaStateInfo> & get_delta_state_data_pool() const;
 
     class const_iterator {
         using iterator_category = std::forward_iterator_tag;

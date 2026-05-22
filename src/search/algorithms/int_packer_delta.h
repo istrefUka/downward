@@ -30,8 +30,6 @@ public:
     explicit DeltaPacker(const std::vector<int> &ranges);
     ~DeltaPacker();
 
-    int get(const Bin *buffer, int var) const;
-    void set(Bin *buffer, int var, int value) const;
 
     //TODO: Probably delete this
     int get_num_bins() const {

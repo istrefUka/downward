@@ -120,6 +120,7 @@ create_fast_downward_library(
     DEPENDS
         causal_graph
         int_hash_set
+        int_hash_set_delta
         int_packer
         int_packer_delta
         ordered_set
@@ -266,6 +267,14 @@ create_fast_downward_library(
     SOURCES
         algorithms/int_hash_set
     DEPENDENCY_ONLY
+)
+
+create_fast_downward_library(
+        NAME int_hash_set_delta
+        HELP "Hash set storing non-negative integers"
+        SOURCES
+        algorithms/int_hash_set_delta
+        DEPENDENCY_ONLY
 )
 
 create_fast_downward_library(

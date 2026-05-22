@@ -63,15 +63,6 @@ public:
     int get_range() const{
         return range;
     }
-    int get(const Bin *buffer) const {
-        return (buffer[bin_index] & read_mask) >> shift;
-    }
-
-    void set(Bin *buffer, int value) const {
-        assert(value >= 0 && value < range);
-        Bin &bin = buffer[bin_index];
-        bin = (bin & clear_mask) | (value << shift);
-    }
 };
 
 
@@ -83,19 +74,8 @@ DeltaPacker::DeltaPacker(const vector<int> &ranges) : num_bins(0) {
 DeltaPacker::~DeltaPacker() {
 }
 
-int DeltaPacker::get(const Bin *buffer, int var) const {
-    return var_infos[var].get(buffer);
-}
 
 
-
-void DeltaPacker::set(Bin *buffer, int var, int value) const {
-    var_infos[var].set(buffer, value);
-}
-
-//TODO: This method should set the first bit to 0 or 1, the second pair of
-//bits is the position of the change the third pair of bits is the value that
-//it was being changed with and so on.
 
 
 
@@ -104,7 +84,7 @@ int create_mask(int bit_size) {
     return (1 << bit_size) - 1;
 }
 
-int read_bits(int shift, int bit_size, DeltaPacker::Bin buffer){
+unsigned int read_bits(int shift, int bit_size, DeltaPacker::Bin buffer){
     int mask = create_mask(bit_size);
     return (buffer >> shift) & mask;
 }
@@ -120,7 +100,9 @@ void write_bits(int value, int shift, int bit_size, DeltaPacker::Bin &packed_val
     packed_value = packed_value | (value << shift);
 }
 
-//TODO: give back a vector to know how much bins were inserted
+//This method should set the first bit to 0 or 1, the second pair of
+//bits is the position of the change the third pair of bits is the value that
+//it was being changed with and so on.
 std::vector<DeltaPacker::Bin> DeltaPacker::create_buffer(std::vector<std::tuple<int, int>> &effs) {
     std::vector<std::tuple<int, int>> eff_ordered(effs); // Kopie von effs
     std::sort(eff_ordered.begin(), eff_ordered.end(),
@@ -170,8 +152,6 @@ std::vector<DeltaPacker::Bin> DeltaPacker::create_buffer(std::vector<std::tuple<
 
 
 
-//TODO: implement this method (reverse of DeltaPacker::create_buffer)
-//TODO: einmal müssen wir den State hergeben aufgrund von der StateID und den gespeicherten states, einmal
 
 std::vector<std::tuple<int, int>> DeltaPacker::get_buffer(const std::vector<DeltaStateInfo> &buffer, int StateID) const{
     int effs_bits = get_bit_size_for_range(this->effs_range);
@@ -185,7 +165,7 @@ std::vector<std::tuple<int, int>> DeltaPacker::get_buffer(const std::vector<Delt
     while (true) {
 
         if (shift + effs_bits > intSizeBits) {
-            //Todo: go next bin or finish
+            //go next bin or finish
             if (read_bits(0,1,buffer[index].effs) == 0) {
                 return effects;
             }
@@ -197,12 +177,12 @@ std::vector<std::tuple<int, int>> DeltaPacker::get_buffer(const std::vector<Delt
         shift += effs_bits;
         //Done reading
         if (eff == 0 ) {
-            //Todo: finish
+            //finish
             return effects;
         }
         var_bits = get_bit_size_for_range(var_infos[eff-1].get_range());
         if (shift + var_bits > intSizeBits) {
-            //Todo: go next bin
+            //go next bin
             index++;
             shift = 1;
         }
@@ -240,7 +220,6 @@ void DeltaPacker::pack_bins(const vector<int> &ranges) {
 
 
 
-//TODO: how to use with delta variables?
 int DeltaPacker::pack_one_bin(
     const vector<int> &ranges, vector<vector<int>> &bits_to_vars) {
     // Returns the number of variables added to the bin. We pack each

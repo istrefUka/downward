@@ -5,8 +5,8 @@
 #include "task_utils/task_properties.h"
 #include "utils/logging.h"
 
+//TODO: registered_delta_state anders brauchen
 using namespace std;
-//TODO: initialize delta_packer
 StateRegistry::StateRegistry(const TaskProxy &task_proxy)
     : task_proxy(task_proxy),
       state_packer(task_properties::g_state_packers[task_proxy]),
@@ -18,7 +18,7 @@ StateRegistry::StateRegistry(const TaskProxy &task_proxy)
       registered_states(
           StateIDSemanticHash(state_data_pool, get_bins_per_state()),
           StateIDSemanticEqual(state_data_pool, get_bins_per_state())),
-          registered_delta_states()
+          registered_delta_states(delta_state_data_pool, delta_packer, state_data_pool, task_proxy, *this)
 {
 }
 
@@ -40,26 +40,27 @@ StateID StateRegistry::insert_id_or_pop_state() {
     return StateID(result.first);
 }
 
-//TODO: registered states arbeitet nicht mit delta_state_data_pool
-StateID StateRegistry::insert_id_or_pop_delta_state() {
+//TODO: maybe multpiple pops?, get id also as argument, because else don't know how much to get back.
+//maybe pops already inserted delta state, returns the actual state ID for...
+StateID StateRegistry::insert_id_or_pop_delta_state(HashType hash, StateID id ) {
     /*
       Attempt to insert a StateID for the last state of delta_state_data_pool
       if none is present yet. If this fails (another entry for this state
       is present), we have to remove the duplicate entry from the
       state data pool.
     */
-    StateID id(delta_state_data_pool.size() - 1);
-    pair<int, bool> result = registered_states.insert(id.value);
+
+    pair<int, bool> result = registered_delta_states.insert(id.value, hash);
     bool is_new_entry = result.second;
     if (!is_new_entry) {
-        delta_state_data_pool.pop_back();
+        std::vector<std::tuple<int, int>> effs = delta_packer.get_buffer(delta_state_data_pool, id.value);
+        for (int i = 0; i < effs.size(); ++i) {
+            delta_state_data_pool.pop_back();
+        }
     }
-    assert(
-        registered_states.size() == static_cast<int>(state_data_pool.size()));
     return StateID(result.first);
 }
 
-//TODO: löschen falls nicht mehr gebraucht.
 State StateRegistry::lookup_state(StateID id) const{
     const PackedStateBin *buffer = nullptr;
     if (id.value >= state_data_pool.size()) {
@@ -72,7 +73,7 @@ State StateRegistry::lookup_state(StateID id) const{
         std::vector<std::tuple<int, int>> effs = delta_packer.get_buffer(delta_state_data_pool, id.value);
         State s = task_proxy.create_delta_state(*this, id, delta.parent_state, effs, buffer);
         s.unpack();
-        std::vector<int> new_values = s.get_unpacked_values();
+        std::vector<int> new_values= s.get_unpacked_values();
         for (size_t i = 0; i < new_values.size(); ++i) {
             state_packer.set(buff, i, new_values[i]);
         }
@@ -85,16 +86,13 @@ State StateRegistry::lookup_state(StateID id) const{
     return task_proxy.create_state(*this, id, buffer);
 }
 
-State StateRegistry::lookup_state_delta(StateID id) {
+State StateRegistry::lookup_state_delta(StateID id){
     PackedStateBin *buffer = nullptr;
 
-    //TODO: was machen, da Root node nicht in delta_state_data_pool ist?
-    //TODO: state_data_pool verbraucht zu viel speicher
     if (id.value == 0) {
         buffer = state_data_pool[id.value];
         return task_proxy.create_state(*this, id, buffer);
     }
-
 
     DeltaStateInfo delta = delta_state_data_pool[id.value];
     std::vector<std::tuple<int, int>> effs = delta_packer.get_buffer(delta_state_data_pool, id.value);
@@ -111,7 +109,6 @@ State StateRegistry::lookup_state(
     return task_proxy.create_state(*this, id, buffer, move(state_values));
 }
 
-//TODO: compute hash from new_values
 int_hash_set::HashType compute_hash(const vector<int> &new_values) {
     utils::HashState hash_state;
     for (int value : new_values) {
@@ -143,13 +140,12 @@ const State &StateRegistry::get_initial_state() {
         cached_initial_state = make_unique<State>(lookup_state(id));
         cached_initial_state->unpack();
         int_hash_set::HashType hash = compute_hash(cached_initial_state->get_unpacked_values());
-        registered_delta_states.insert(hash, id);
+        insert_id_or_pop_delta_state(hash, id);
     }
     return *cached_initial_state;
 }
 
 
-//TODO: effs+1
 State StateRegistry::get_successor_state_delta(
     const State &predecessor, const OperatorProxy &op) {
     assert(!op.is_axiom());
@@ -159,7 +155,6 @@ State StateRegistry::get_successor_state_delta(
       buffer becoming a dangling pointer. This used to be a bug before being
       fixed in https://issues.fast-downward.org/issue1115.
     */
-    //TODO: diese Zeile problematisch, da buffer nicht enthalten in compressed states.
     PackedStateBin *buffer = nullptr;
 
     predecessor.unpack();
@@ -175,42 +170,13 @@ State StateRegistry::get_successor_state_delta(
     int_hash_set::HashType hash = compute_hash(new_values);
 
     //TODO: only create buffer_delta when needed
+    StateID id_new(delta_state_data_pool.size());
     std::vector<PackedStateBin> buffer_delta = delta_packer.create_buffer(effs);
-    StateID id(delta_state_data_pool.size());
-    InsertResult res = registered_delta_states.insert(hash, id);
-    bool insert = true;
-    if (!res.inserted) {
-        for (int i = 0; i < res.bucket->size(); ++i) {
-            StateID new_id = res.bucket->at(i);
-            State s = lookup_state_delta(new_id);
-            s.unpack();
-            std::vector<int> unpacked = s.get_unpacked_values();
-            if (unpacked == new_values) {
-                insert = false;
-                id = new_id;
-                break;
-            }
-        }
-        if (insert) {
-            registered_delta_states.insert_force(hash, id);
-            for (int i = 0; i < buffer_delta.size(); ++i) {
-                DeltaStateInfo new_delta = {buffer_delta[i], predecessor.get_id()};
-                delta_state_data_pool.push_back(new_delta);
-            }
-            std::vector<std::tuple<int, int>> effs_calc = delta_packer.get_buffer(delta_state_data_pool, id.value);
-        }
+    for (int i = 0; i < buffer_delta.size(); ++i) {
+        DeltaStateInfo new_delta = {buffer_delta[i], predecessor.get_id()};
+        delta_state_data_pool.push_back(new_delta);
     }
-    if (res.inserted) {
-        for (int i = 0; i < buffer_delta.size(); ++i) {
-            DeltaStateInfo new_delta = {buffer_delta[i], predecessor.get_id()};
-            delta_state_data_pool.push_back(new_delta);
-        }
-    }
-
-    assert(delta_state_data_pool.size() == registered_delta_states.get_table().size());
-    if (predecessor.get_is_delta()) {
-      predecessor.set_values_to_null();
-    }
+    StateID id = insert_id_or_pop_delta_state(hash, id_new);
 
     StateID id_parent(predecessor.get_id().value);
 
@@ -322,17 +288,18 @@ std::size_t StateRegistry::memory_estimate_delta_states() const {
 
     return total / delta_state_data_pool.size();
 }
-//TODO:   compute memory size of DeltaStateTable registered_delta_states;
 int StateRegistry::get_memory_size_delta_management() const {
     return static_cast<int>(registered_delta_states.memory_estimate());
 }
 
-//TODO: compute memory size of const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
 int StateRegistry::get_memory_size_states() const {
     return static_cast<int>(state_data_pool.memory_estimate());
 }
 
-//TODO: compute memory size of StateIDSet registered_states;
 int StateRegistry::get_memory_size_menagement() const {
     return static_cast<int>(registered_states.memory_estimate());
+}
+
+const std::vector<DeltaStateInfo> & StateRegistry::get_delta_state_data_pool() const{
+    return delta_state_data_pool;
 }
