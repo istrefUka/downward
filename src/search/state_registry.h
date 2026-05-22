@@ -4,7 +4,6 @@
 #include "abstract_task.h"
 #include "axioms.h"
 #include "delta_state_info.h"
-#include "delta_state_table.h"
 #include "state_id.h"
 
 #include "algorithms/int_hash_set.h"

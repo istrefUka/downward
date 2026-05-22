@@ -92,7 +92,6 @@ create_fast_downward_library(
         axioms
         command_line
         delta_state_info
-        delta_state_table
         evaluation_context
         evaluation_result
         evaluator
