@@ -118,6 +118,7 @@ void My_EagerSearch::print_statistics() const {
 
 SearchStatus My_EagerSearch::step() {
     optional<SearchNode> node = get_next_node_to_expand();
+    std::cout << "out of get_next_node" << std::endl;
     if (!node.has_value()) {
         assert(open_list->empty());
         log << "Completely explored state space -- no solution!" << endl;
@@ -128,24 +129,27 @@ SearchStatus My_EagerSearch::step() {
 }
 
 optional<SearchNode> My_EagerSearch::get_next_node_to_expand() {
+    //std::cout << "in get_next_node_to_expand" << std::endl;
     while (!open_list->empty()) {
-
+        //std::cout << "removing from open list" << std::endl;
         StateID id = open_list->remove_min();
+        //std::cout << "looking up state " << id << std::endl;
         State s = state_registry.lookup_state_delta(id);
         if (!s.get_is_delta()) {
             std::cout << "s not delta" << std::endl;
         }
+        //std::cout << "aus lookup_state_delta" << std::endl;
         SearchNode node = search_space.get_node(s); //TODO: könnte Problematische Logik geben
-
+        //std::cout << "got node" << std::endl;
         if (node.is_closed())
             continue;
-
+        //std::cout << "node not closed" << std::endl;
         /*
           We can pass calculate_preferred=false here since preferred
           operators are computed when the state is expanded.
         */
         EvaluationContext eval_context(s, node.get_g(), false, &statistics);
-
+        //std::cout << "eval context" << std::endl;
         if (lazy_evaluator) {
             /*
               With lazy evaluators (and only with these) we can have dead nodes
@@ -180,10 +184,12 @@ optional<SearchNode> My_EagerSearch::get_next_node_to_expand() {
                 }
             }
         }
-
+        //std::cout << "closing node" << std::endl;
         node.close();
         assert(!node.is_dead_end());
+        //std::cout << "update stats" << std::endl;
         update_f_value_statistics(eval_context);
+        //std::cout << "return normal node" << std::endl;
         return node;
     }
     return nullopt;
@@ -203,6 +209,7 @@ void My_EagerSearch::collect_preferred_operators_for_node(
 }
 
 SearchStatus My_EagerSearch::expand(const SearchNode &node) {
+    //std::cout << "in expand" << std::endl;
     statistics.inc_expanded();
 
     const State &state = node.get_state();
@@ -223,6 +230,7 @@ SearchStatus My_EagerSearch::expand(const SearchNode &node) {
 
 //TODO: Wichtige Stelle
 void My_EagerSearch::generate_successors(const SearchNode &node) {
+    //std::cout << "Generating successors..." << std::endl;
     const State &state = node.get_state();
 
     vector<OperatorID> applicable_operators;
@@ -243,7 +251,9 @@ void My_EagerSearch::generate_successors(const SearchNode &node) {
         if ((node.get_real_g() + op.get_cost()) >= bound)
             continue;
 
+        //std::cout << "get successor states" << std::endl;
         State succ_state = state_registry.get_successor_state_delta(state, op);
+        //std::cout << "get successor states done" << std::endl;
         statistics.inc_generated();
 
         SearchNode succ_node = search_space.get_node(succ_state);

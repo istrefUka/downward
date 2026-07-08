@@ -328,6 +328,9 @@ public:
     int get_memory_size_delta_management() const;
     int get_memory_size_states() const;
     int get_memory_size_menagement() const;
+    void print_delta_buffer(
+    const std::vector<PackedStateBin> &buffer_delta,
+    const std::vector<std::tuple<int, int>> &effs);
 
 };
 

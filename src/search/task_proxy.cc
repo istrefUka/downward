@@ -133,8 +133,9 @@ std::shared_ptr<std::vector<int>> State::create_variables_from_delta() const {
     std::vector<std::tuple<int, int>> effects;
     std::unordered_set<int> seen_indices;
 
-    effects.reserve(current.effs.size());
-    seen_indices.reserve(current.effs.size());
+    State initialState = const_cast<StateRegistry*>(current.get_registry())->get_initial_state();
+    effects.reserve(initialState.values->size()*2);
+    seen_indices.reserve(initialState.values->size()*2);
 
     auto add_effects_if_missing = [&](const std::vector<std::tuple<int, int>>& effs) {
         for (const auto& eff : effs) {
@@ -164,7 +165,6 @@ std::shared_ptr<std::vector<int>> State::create_variables_from_delta() const {
         for (const auto& [idx, value] : effects) {
             (*calculated_values)[idx - 1] = value;
         }
-
         return calculated_values;
     }
 

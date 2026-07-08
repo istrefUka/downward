@@ -4,6 +4,8 @@
 
 #include "task_utils/task_properties.h"
 #include "utils/logging.h"
+#include <bitset>
+#include <iomanip>
 
 //TODO: registered_delta_state anders brauchen
 using namespace std;
@@ -54,7 +56,8 @@ StateID StateRegistry::insert_id_or_pop_delta_state(HashType hash, StateID id ) 
     bool is_new_entry = result.second;
     if (!is_new_entry) {
         std::vector<std::tuple<int, int>> effs = delta_packer.get_buffer(delta_state_data_pool, id.value);
-        for (int i = 0; i < effs.size(); ++i) {
+        std::vector<PackedStateBin> buffer = delta_packer.create_buffer(effs);
+        for (int i = 0; i < buffer.size(); ++i) {
             delta_state_data_pool.pop_back();
         }
     }
@@ -87,6 +90,7 @@ State StateRegistry::lookup_state(StateID id) const{
 }
 
 State StateRegistry::lookup_state_delta(StateID id){
+    //std::cout << "in lookup_state_delta" << std::endl;
     PackedStateBin *buffer = nullptr;
 
     if (id.value == 0) {
@@ -95,7 +99,9 @@ State StateRegistry::lookup_state_delta(StateID id){
     }
 
     DeltaStateInfo delta = delta_state_data_pool[id.value];
+    //std::cout << "delta state data pool not problem" << std::endl;
     std::vector<std::tuple<int, int>> effs = delta_packer.get_buffer(delta_state_data_pool, id.value);
+    //std::cout << "got buffer" << std::endl;
     return task_proxy.create_delta_state(*this, id, delta.parent_state, effs, buffer);
 }
 
@@ -148,6 +154,7 @@ const State &StateRegistry::get_initial_state() {
 
 State StateRegistry::get_successor_state_delta(
     const State &predecessor, const OperatorProxy &op) {
+    //std::cout << "in get_successor_state_delta" << std::endl;
     assert(!op.is_axiom());
     /*
       TODO: ideally, we would not modify state_data_pool here and in
@@ -156,28 +163,50 @@ State StateRegistry::get_successor_state_delta(
       fixed in https://issues.fast-downward.org/issue1115.
     */
     PackedStateBin *buffer = nullptr;
-
+    //std::cout << "unpacking predecessor" << std::endl;
     predecessor.unpack();
+    //std::cout << "unpack successfull" << std::endl;
     vector<int> new_values = predecessor.get_unpacked_values();
+    //std::cout << "new values size " << new_values.size() << std::endl;
     auto effs = std::vector<std::tuple<int, int>>();
+    //std::cout << "effs created" << std::endl;
     for (EffectProxy effect : op.get_effects()) {
         if (does_fire(effect, predecessor)) {
+            //std::cout << "fired" << std::endl;
             FactPair effect_pair = effect.get_fact().get_pair();
+            //std::cout << "got effect pair" << std::endl;
             effs.emplace_back((effect_pair.var+1), effect_pair.value);
+            //std::cout << "emplaced back" << std::endl;
             new_values[effect_pair.var] = effect_pair.value;
+            //std::cout << "new_values size" << new_values.size() << std::endl;
         }
     }
+    //std::cout << "computing hash" << std::endl;
     int_hash_set::HashType hash = compute_hash(new_values);
 
-    //TODO: only create buffer_delta when needed
     StateID id_new(delta_state_data_pool.size());
     std::vector<PackedStateBin> buffer_delta = delta_packer.create_buffer(effs);
+    //TODO: print buffer_delta
+    //print_delta_buffer(buffer_delta, effs);
     for (int i = 0; i < buffer_delta.size(); ++i) {
         DeltaStateInfo new_delta = {buffer_delta[i], predecessor.get_id()};
         delta_state_data_pool.push_back(new_delta);
     }
-    StateID id = insert_id_or_pop_delta_state(hash, id_new);
 
+    /*std::vector<std::tuple<int, int>> decoded_effs =
+    delta_packer.get_buffer(delta_state_data_pool, id_new.value);
+
+    std::cout << "decoded effs after packing: ";
+    for (const auto &[var_1_based, value] : decoded_effs) {
+        std::cout << "(var_1_based=" << var_1_based
+                  << ", var_0_based=" << (var_1_based - 1)
+                  << ", value=" << value << ") ";
+    }
+    std::cout << std::endl;*/
+
+    StateID id = insert_id_or_pop_delta_state(hash, id_new);
+    //std::cout<< "delta_state_data_pool size " << delta_state_data_pool.size() << std::endl;
+    //std::cout<< "registered_delta_states size " << registered_delta_states.size() << std::endl;
     StateID id_parent(predecessor.get_id().value);
 
     return lookup_state_delta(id, id_parent,  effs, buffer);
@@ -302,4 +331,37 @@ int StateRegistry::get_memory_size_menagement() const {
 
 const std::vector<DeltaStateInfo> & StateRegistry::get_delta_state_data_pool() const{
     return delta_state_data_pool;
+}
+
+void StateRegistry::print_delta_buffer(
+    const std::vector<PackedStateBin> &buffer_delta,
+    const std::vector<std::tuple<int, int>> &effs) {
+    std::cout << "---- delta buffer debug ----" << std::endl;
+
+    std::cout << "effs before packing: ";
+    for (const auto &[var_1_based, value] : effs) {
+        std::cout << "(var_1_based=" << var_1_based
+                  << ", value=" << value << ") "<< std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "buffer_delta.size() = "
+              << buffer_delta.size()
+              << std::endl;
+
+    for (size_t i = 0; i < buffer_delta.size(); ++i) {
+        PackedStateBin bin = buffer_delta[i];
+
+        std::cout << "buffer_delta[" << i << "] = "
+                  << bin
+                  << " | hex=0x"
+                  << std::hex << static_cast<unsigned long long>(bin)
+                  << std::dec
+                  << " | bits="
+                  << std::bitset<sizeof(PackedStateBin) * 8>(
+                         static_cast<unsigned long long>(bin))
+                  << std::endl;
+    }
+
+    std::cout << "----------------------------" << std::endl;
 }
