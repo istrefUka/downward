@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <memory>
-#include "/home/istref-uka/Dokumente/BA/downward/src/search/delta_state_info.h"
+#include "../delta_state_info.h"
 
 class DeltaPacker {
     class VariableInfo;
