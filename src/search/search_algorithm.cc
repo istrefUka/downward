@@ -125,19 +125,19 @@ void SearchAlgorithm::search() {
 }
 
 bool SearchAlgorithm::check_goal_and_set_plan(const State &state) {
-    log << "Checking state: ";
+    //log << "Checking state: ";
     state.unpack();
-    std::cout << "memory for delta states in bytes: "<< state.get_registry()-> get_delta_state_data_pool().capacity()*sizeof(state.get_registry()->get_delta_state_data_pool()[0]) <<std::endl;
-    std::cout << "memory for delta states menagement in bytes: " << state.get_registry()->get_memory_size_delta_management() << std::endl;
-    std:: cout << "memory for normal states in bytes: " << state.get_registry()->get_memory_size_states() <<std::endl;
-    std::cout << "memory for normal states management in bytes: " << state.get_registry()->get_memory_size_menagement() << std::endl;
+    //std::cout << "memory for delta states in bytes: "<< state.get_registry()-> get_delta_state_data_pool().capacity()*sizeof(state.get_registry()->get_delta_state_data_pool()[0]) <<std::endl;
+    //std::cout << "memory for delta states menagement in bytes: " << state.get_registry()->get_memory_size_delta_management() << std::endl;
+    //std:: cout << "memory for normal states in bytes: " << state.get_registry()->get_memory_size_states() <<std::endl;
+    //std::cout << "memory for normal states management in bytes: " << state.get_registry()->get_memory_size_menagement() << std::endl;
     const std::vector<int> &values = state.get_unpacked_values();
     for (size_t i = 0; i < values.size(); ++i) {
-        log << values[i] << " ";
+        //log << values[i] << " ";
     }
-    log << endl;
-    log << "Amount of differences to parent: ";
-    log << state.get_effs_size() << endl;
+    //log << endl;
+    //log << "Amount of differences to parent: ";
+    //log << state.get_effs_size() << endl;
     if (task_properties::is_goal_state(task_proxy, state)) {
         log << "Solution found!" << endl;
         Plan plan;

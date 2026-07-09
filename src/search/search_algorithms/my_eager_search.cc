@@ -118,7 +118,7 @@ void My_EagerSearch::print_statistics() const {
 
 SearchStatus My_EagerSearch::step() {
     optional<SearchNode> node = get_next_node_to_expand();
-    std::cout << "out of get_next_node" << std::endl;
+    //std::cout << "out of get_next_node" << std::endl;
     if (!node.has_value()) {
         assert(open_list->empty());
         log << "Completely explored state space -- no solution!" << endl;
