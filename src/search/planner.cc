@@ -43,8 +43,8 @@ int main(int argc, const char **argv) {
         shared_ptr<SearchAlgorithm> search_algorithm =
             parse_cmd_line(argc, argv, unit_cost);
 
-        std::streambuf* original_buffer = std::cout.rdbuf();
-        std::cout.rdbuf(nullptr);
+        //std::streambuf* original_buffer = std::cout.rdbuf();
+        //std::cout.rdbuf(nullptr);
         utils::Timer search_timer;
         search_algorithm->search();
         search_timer.stop();
