@@ -302,6 +302,7 @@ void StateRegistry::print_delta_states() const{
     std::cout << std::endl;
 }
 
+//TODO: not have always 8 bytes as output
 std::size_t StateRegistry::memory_estimate_delta_states() const {
     if (delta_state_data_pool.empty()) {
         return 0;
@@ -315,7 +316,7 @@ std::size_t StateRegistry::memory_estimate_delta_states() const {
         total += sizeof(DeltaStateInfo);
     }
 
-    return total / delta_state_data_pool.size();
+    return total / registered_delta_states.size();
 }
 int StateRegistry::get_memory_size_delta_management() const {
     return static_cast<int>(registered_delta_states.memory_estimate());

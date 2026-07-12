@@ -120,7 +120,6 @@ std::vector<DeltaPacker::Bin> DeltaPacker::create_buffer(std::vector<std::tuple<
     Bin currentBuffer = 0;
 
     for (auto &[first, second] : eff_ordered) {
-        //TODO: fix condition, condition should change bin when bin full
         if (shift + effs_bits > intSizeBits) {
             write_bits(1,0,1,currentBuffer);
             buffer.push_back(currentBuffer);
@@ -133,9 +132,6 @@ std::vector<DeltaPacker::Bin> DeltaPacker::create_buffer(std::vector<std::tuple<
         write_bits(first, shift, effs_bits, currentBuffer);
         shift += effs_bits;
         var_bits = get_bit_size_for_range(var_infos[first-1].get_range());
-        //TODO: was wenn 33 bits für die zwei zahlen darüber gebraucht werden?
-        //TODO: was wenn 33 bits nur für value gebraucht wird?
-        //When not enough bits for current bin
 
         if (shift + var_bits > intSizeBits) {
             write_bits(1,0,1,currentBuffer);

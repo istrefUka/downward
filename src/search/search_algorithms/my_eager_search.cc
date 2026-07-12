@@ -218,7 +218,7 @@ SearchStatus My_EagerSearch::expand(const SearchNode &node) {
         std::cout<< "amount of delta states registered: " << registry->registered_delta_states_no() << std::endl;
         std::cout<< "amount of normal states registered in delta mode: " << registry->registered_states_no() << std::endl;
         int average = registry->memory_estimate_delta_states();
-        std::cout << "estimate of average delta_state memory usage in Bytes: " << average << std::endl;
+        std::cout << "average of delta_state memory usage in Bytes: " << average << std::endl;
         std::cout << "open list size: " << open_list->get_size() << std::endl;
         return SOLVED;
     }
