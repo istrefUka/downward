@@ -13,7 +13,7 @@ class MyEagerSearchFeature
           my_eager_search::My_EagerSearch> {
 public:
     MyEagerSearchFeature()
-        : TypedFeature("my_eager") {
+        : TypedFeature("delta_eager") {
         document_title("My Eager best-first search");
         document_synopsis(
             "Custom adaptation of eager search.");
